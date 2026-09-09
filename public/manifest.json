@@ -1,0 +1,22 @@
+{
+  "name": "Cooking Assistant",
+  "short_name": "ChefMise",
+  "description": "AI Personal Cooking Assistant answering what to cook, when to prepare, and how to cook step-by-step.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbf9f5",
+  "theme_color": "#b25537",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

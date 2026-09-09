@@ -1,0 +1,6 @@
+{
+  "name": "Cooking Assistant",
+  "description": "AI-powered personal cooking assistant answering what to cook, when to prepare, and how to cook step-by-step.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
