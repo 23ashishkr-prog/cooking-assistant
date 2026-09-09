@@ -64,10 +64,10 @@ export function TomorrowPlanNightPrep({
   onStartCooking,
   onSelectRecipeForPlan,
 }: TomorrowPlanNightPrepProps) {
-  // Tomorrow's date string
+  // Use UTC and an explicit locale so the server and browser render the same date.
   const tomorrowDate = useMemo(() => {
     const d = new Date()
-    d.setDate(d.getDate() + 1)
+    d.setUTCDate(d.getUTCDate() + 1)
     return d
   }, [])
 
@@ -76,7 +76,8 @@ export function TomorrowPlanNightPrep({
   }, [tomorrowDate])
 
   const tomorrowFormatted = useMemo(() => {
-    return tomorrowDate.toLocaleDateString(undefined, {
+    return tomorrowDate.toLocaleDateString('en-US', {
+      timeZone: 'UTC',
       weekday: 'long',
       month: 'short',
       day: 'numeric',
