@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   AlertTriangle,
   Bell,
@@ -268,48 +268,50 @@ export function TomorrowPlanNightPrep({
   const [newItemAmount, setNewItemAmount] = useState('')
   const [newItemMeal, setNewItemMeal] = useState<'breakfast' | 'lunch' | 'high_tea' | 'dinner' | 'general'>('general')
 
-  // Real-time Countdown to Midnight
-  const [timeLeftToMidnight, setTimeLeftToMidnight] = useState<{
-    hours: number
-    minutes: number
-    seconds: number
-    isApproachingMidnight: boolean
-  }>({
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-    isApproachingMidnight: false,
-  })
+  // Real-time countdown to the user's night reminder.
+  const [reminderTime, setReminderTime] = useState('23:00')
+  const [timeLeftToReminder, setTimeLeftToReminder] = useState({ hours: 0, minutes: 0, seconds: 0 })
+  const reminderCountdownReady = useRef(false)
+
+  useEffect(() => {
+    try {
+      const savedTime = localStorage.getItem('mise_reminder_time')
+      if (savedTime && /^([01]\\d|2[0-3]):[0-5]\\d$/.test(savedTime)) setReminderTime(savedTime)
+    } catch (e) {
+      console.warn('Failed to load reminder time', e)
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mise_reminder_time', reminderTime)
+    } catch (e) {
+      console.warn('Failed to save reminder time', e)
+    }
+  }, [reminderTime])
 
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date()
-      const midnight = new Date(now)
-      midnight.setHours(23, 59, 59, 999)
-
-      const diffMs = midnight.getTime() - now.getTime()
-      if (diffMs <= 0) {
-        setTimeLeftToMidnight({ hours: 0, minutes: 0, seconds: 0, isApproachingMidnight: true })
-        return
-      }
-
-      const totalSecs = Math.floor(diffMs / 1000)
-      const hours = Math.floor(totalSecs / 3600)
-      const minutes = Math.floor((totalSecs % 3600) / 60)
-      const seconds = totalSecs % 60
-
-      // Approaching midnight if after 8 PM (hours < 4)
-      const isApproachingMidnight = hours < 4
-
-      setTimeLeftToMidnight({ hours, minutes, seconds, isApproachingMidnight })
+      const [hours, minutes] = reminderTime.split(':').map(Number)
+      const target = new Date(now)
+      target.setHours(hours, minutes, 0, 0)
+      if (target <= now) target.setDate(target.getDate() + 1)
+      const totalSecs = Math.max(0, Math.floor((target.getTime() - now.getTime()) / 1000))
+      setTimeLeftToReminder({
+        hours: Math.floor(totalSecs / 3600),
+        minutes: Math.floor((totalSecs % 3600) / 60),
+        seconds: totalSecs % 60,
+      })
     }
 
     calculateTimeLeft()
+    reminderCountdownReady.current = true
     const interval = setInterval(calculateTimeLeft, 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [reminderTime])
 
-  // Midnight Reminder Alert Settings & State
+  // Reminder Alert Settings & State
   const [reminderEnabled, setReminderEnabled] = useState(true)
   const [reminderNotificationFired, setReminderNotificationFired] = useState(false)
   const [showReminderModal, setShowReminderModal] = useState(false)
@@ -364,6 +366,13 @@ export function TomorrowPlanNightPrep({
     setReminderNotificationFired(true)
     setReminderTriggerNotice('🔔 Reminder Alert Active: Check your night prep tasks and required ingredients before 11:59 PM!')
   }
+
+  useEffect(() => {
+    if (!reminderCountdownReady.current || !reminderEnabled || reminderNotificationFired) return
+    if (timeLeftToReminder.hours === 0 && timeLeftToReminder.minutes === 0 && timeLeftToReminder.seconds === 0) {
+      handleTriggerReminder()
+    }
+  }, [timeLeftToReminder, reminderEnabled, reminderNotificationFired])
 
   // Toggle night task completion
   const handleToggleTask = (id: string) => {
@@ -492,12 +501,12 @@ export function TomorrowPlanNightPrep({
               <div className="font-mono text-xs font-bold">
                 {pendingTasksCount > 0 ? (
                   <>
-                    ⏳ {String(timeLeftToMidnight.hours).padStart(2, '0')}h :{' '}
-                    {String(timeLeftToMidnight.minutes).padStart(2, '0')}m :{' '}
-                    {String(timeLeftToMidnight.seconds).padStart(2, '0')}s to 11:59 PM
+                    {String(timeLeftToReminder.hours).padStart(2, '0')}h :{' '}
+                    {String(timeLeftToReminder.minutes).padStart(2, '0')}m :{' '}
+                    {String(timeLeftToReminder.seconds).padStart(2, '0')}s to {reminderTime}
                   </>
                 ) : (
-                  <span>Ready for a peaceful sleep 🌙</span>
+                  <span>Ready for a peaceful sleep</span>
                 )}
               </div>
             </div>
@@ -514,6 +523,20 @@ export function TomorrowPlanNightPrep({
             <BellRing className="size-3.5 text-[#df9776]" />
             <span>Reminder Alert</span>
           </button>
+          <div className="flex items-center gap-1.5 rounded-2xl border border-[#ded9cf] bg-white px-2.5 py-1.5">
+            <label htmlFor="night-reminder-time" className="sr-only">Night reminder time</label>
+            <input
+              id="night-reminder-time"
+              type="time"
+              value={reminderTime}
+              onChange={(event) => {
+                setReminderTime(event.target.value)
+                setReminderNotificationFired(false)
+              }}
+              className="bg-transparent text-xs font-bold text-[#223129] outline-none"
+            />
+            <span className="text-[10px] font-semibold text-[#736e65]">Set Time</span>
+          </div>
         </div>
       </div>
 
@@ -1118,11 +1141,11 @@ export function TomorrowPlanNightPrep({
 
             {/* Countdown Banner */}
             <div className="rounded-2xl bg-[#223129] text-white p-3.5 flex items-center justify-between">
-              <span className="text-xs font-bold text-[#df9776]">Countdown to Midnight (11:59 PM):</span>
+              <span className="text-xs font-bold text-[#df9776]">Countdown to {reminderTime}:</span>
               <span className="font-mono text-sm font-bold">
-                {String(timeLeftToMidnight.hours).padStart(2, '0')}h :{' '}
-                {String(timeLeftToMidnight.minutes).padStart(2, '0')}m :{' '}
-                {String(timeLeftToMidnight.seconds).padStart(2, '0')}s
+                {String(timeLeftToReminder.hours).padStart(2, '0')}h :{' '}
+                {String(timeLeftToReminder.minutes).padStart(2, '0')}m :{' '}
+                {String(timeLeftToReminder.seconds).padStart(2, '0')}s
               </span>
             </div>
 
