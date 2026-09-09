@@ -33,6 +33,7 @@ import {
 } from 'lucide-react'
 import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
+import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
 
 export type RecipeItem = {
   id: string
@@ -731,169 +732,22 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
               </div>
             </div>
 
-            {/* Instant Search & Internet Recipe Finder */}
-            <div className="rounded-3xl border border-[#ded9cf] bg-white p-5 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="font-serif text-base font-bold text-[#223129]">
-                    Search Recipes & Add From Internet
-                  </h3>
-                  <p className="text-xs text-[#736e65]">
-                    Craving something else? Search below. If it is not in your database, our chef searches the web and adds it automatically.
-                  </p>
-                </div>
-
-                {/* Filter Pills */}
-                <div className="flex flex-wrap gap-1.5">
-                  {(['all', 'breakfast', 'lunch', 'high_tea', 'dinner'] as const).map((filter) => (
-                    <button
-                      key={filter}
-                      type="button"
-                      onClick={() => setHomeFilter(filter)}
-                      className={`rounded-full px-3 py-1 text-xs font-semibold capitalize transition ${
-                        homeFilter === filter
-                          ? 'bg-[#223129] text-white'
-                          : 'bg-[#f0ece3] text-[#555047] hover:bg-[#e4ded3]'
-                      }`}
-                    >
-                      {filter === 'high_tea' ? 'High Tea' : filter}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Search Bar with Submit */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8d887d]" />
-                  <input
-                    type="text"
-                    placeholder="Search database or type craving (e.g., Thai Green Curry, Chana Masala)..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && searchQuery.trim()) {
-                        handleSearchInternet(searchQuery)
-                      }
-                    }}
-                    className="w-full rounded-2xl border border-[#ded9cf] bg-[#fbf9f5] pl-10 pr-4 py-2.5 text-xs text-[#223129] placeholder-[#8d887d] focus:border-[#b25537] focus:outline-none"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d887d] hover:text-[#223129]"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleSearchInternet(searchQuery)}
-                  disabled={searchingInternet || !searchQuery.trim()}
-                  className="rounded-2xl bg-[#b25537] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#934329] disabled:opacity-40 transition flex items-center justify-center gap-1.5 shadow-xs shrink-0"
-                >
-                  {searchingInternet ? (
-                    <>
-                      <LoaderCircle className="size-3.5 animate-spin" />
-                      <span>Searching Web...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="size-3.5" />
-                      <span>Search Internet & Add</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Status Alert */}
-              {internetStatus && (
-                <div className="rounded-xl bg-[#fbf5ee] border border-[#fae4d2] p-3 text-xs text-[#b25537] flex items-center gap-2">
-                  <Sparkles className="size-4 shrink-0" />
-                  <span>{internetStatus}</span>
-                </div>
-              )}
-
-              {/* Quick Prompt Chips */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[11px] font-semibold text-[#8d887d]">Quick suggestions:</span>
-                {QUICK_SEARCHES.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery(tag)
-                      handleSearchInternet(tag)
-                    }}
-                    className="rounded-full border border-[#ded9cf] bg-white px-2.5 py-1 text-[11px] font-medium text-[#555047] hover:border-[#b25537] hover:text-[#b25537] transition"
-                  >
-                    + {tag}
-                  </button>
-                ))}
-              </div>
-
-              {/* Database Recipes Grid */}
-              <div className="pt-2">
-                <p className="text-xs font-semibold text-[#736e65] mb-3">
-                  Showing {filteredRecipes.length} recipes in your Supabase table
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-1">
-                  {filteredRecipes.map((r) => (
-                    <div
-                      key={r.id}
-                      className="rounded-2xl border border-[#ded9cf] bg-[#fbf9f5] p-3 flex flex-col justify-between hover:border-[#b25537]/60 transition group"
-                    >
-                      <div>
-                        {r.image_url && (
-                          <div className="relative mb-2 h-24 w-full overflow-hidden rounded-xl bg-[#e8e4db]">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={r.image_url}
-                              alt={r.name}
-                              className="size-full object-cover group-hover:scale-105 transition duration-300"
-                              loading="lazy"
-                            />
-                          </div>
-                        )}
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#b25537]">
-                          {r.meal_type} • {r.cuisine}
-                        </span>
-                        <h4 className="font-serif text-xs font-bold text-[#223129] line-clamp-1 mt-0.5">
-                          {r.name}
-                        </h4>
-                        <p className="text-[11px] text-[#736e65] line-clamp-2 mt-1">
-                          {r.description || 'Authentic dish prepared with fresh ingredients.'}
-                        </p>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-[#ded9cf]/60">
-                        <span className="text-[11px] text-[#736e65]">⏱ {r.cook_time}m</span>
-                        <div className="flex gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedRecipeForPlan(r)}
-                            className="rounded-lg bg-white border border-[#ded9cf] px-2.5 py-1 text-[11px] font-bold text-[#223129] hover:border-[#b25537] hover:text-[#b25537] transition"
-                          >
-                            Plan
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleStartCooking(r)}
-                            className="rounded-lg bg-[#b25537] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-[#934329] transition"
-                          >
-                            Cook
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            {/* Tomorrow's Plan, Night Prep & Required Items Checklist with Midnight Reminder (Replaced Child 3) */}
+            <TomorrowPlanNightPrep
+              recipes={recipes}
+              mealPlans={mealPlans}
+              inventory={inventory}
+              onRefreshPlans={loadMealPlans}
+              onAddInventoryItem={(name, qty, unit) => {
+                fetch('/api/kitchen/inventory', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ ingredient_name: name, quantity: qty, unit }),
+                }).then(() => loadInventory())
+              }}
+              onStartCooking={(rec) => handleStartCooking(rec)}
+              onSelectRecipeForPlan={(rec) => setSelectedRecipeForPlan(rec)}
+            />
           </div>
         )}
 

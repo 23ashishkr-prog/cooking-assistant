@@ -1,0 +1,1193 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import {
+  AlertTriangle,
+  Bell,
+  BellRing,
+  Calendar,
+  Check,
+  CheckCircle2,
+  Clock,
+  Coffee,
+  Flame,
+  Moon,
+  Plus,
+  RefreshCw,
+  ShoppingBag,
+  Sparkles,
+  Sun,
+  Trash2,
+  Utensils,
+  Volume2,
+  X,
+} from 'lucide-react'
+import type { RecipeItem, InventoryItem, MealPlanItem } from './cooking-assistant-app'
+
+export type NightPrepTask = {
+  id: string
+  title: string
+  description: string
+  category: 'soak' | 'marinate' | 'defrost' | 'chop' | 'ferment' | 'custom'
+  forMeal: 'breakfast' | 'lunch' | 'high_tea' | 'dinner' | 'general'
+  isDone: boolean
+  urgent: boolean // Must be done before midnight
+  estimatedMinutes: number
+}
+
+export type TomorrowIngredient = {
+  id: string
+  name: string
+  amount: string
+  mealSlot: 'breakfast' | 'lunch' | 'high_tea' | 'dinner' | 'general'
+  inPantry: boolean
+  checked: boolean
+  isCustom?: boolean
+}
+
+interface TomorrowPlanNightPrepProps {
+  recipes: RecipeItem[]
+  mealPlans: MealPlanItem[]
+  inventory: InventoryItem[]
+  onRefreshPlans?: () => void
+  onAddInventoryItem?: (name: string, qty: number, unit: string) => void
+  onStartCooking?: (recipe: RecipeItem) => void
+  onSelectRecipeForPlan?: (recipe: RecipeItem) => void
+}
+
+export function TomorrowPlanNightPrep({
+  recipes,
+  mealPlans,
+  inventory,
+  onRefreshPlans,
+  onAddInventoryItem,
+  onStartCooking,
+  onSelectRecipeForPlan,
+}: TomorrowPlanNightPrepProps) {
+  // Tomorrow's date string
+  const tomorrowDate = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return d
+  }, [])
+
+  const tomorrowStr = useMemo(() => {
+    return tomorrowDate.toISOString().split('T')[0]
+  }, [tomorrowDate])
+
+  const tomorrowFormatted = useMemo(() => {
+    return tomorrowDate.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+    })
+  }, [tomorrowDate])
+
+  // Tomorrow's Meals selection state
+  const [tomorrowMeals, setTomorrowMeals] = useState<{
+    breakfast: RecipeItem | null
+    lunch: RecipeItem | null
+    high_tea: RecipeItem | null
+    dinner: RecipeItem | null
+  }>(() => {
+    // Check if plans exist for tomorrow
+    const tPlans = mealPlans.filter((p) => p.planned_date === tomorrowStr)
+    const bPlan = tPlans.find((p) => p.meal_type === 'breakfast')
+    const lPlan = tPlans.find((p) => p.meal_type === 'lunch')
+    const hPlan = tPlans.find((p) => p.meal_type === 'high_tea')
+    const dPlan = tPlans.find((p) => p.meal_type === 'dinner')
+
+    const findRec = (plan?: MealPlanItem, fallbackType?: string) => {
+      if (plan?.recipe_id) {
+        const found = recipes.find((r) => r.id === plan.recipe_id)
+        if (found) return found
+      }
+      return recipes.find((r) => r.meal_type === fallbackType) || recipes[0] || null
+    }
+
+    return {
+      breakfast: findRec(bPlan, 'breakfast'),
+      lunch: findRec(lPlan, 'lunch'),
+      high_tea: findRec(hPlan, 'high_tea'),
+      dinner: findRec(dPlan, 'dinner'),
+    }
+  })
+
+  // Synchronize when recipes or mealPlans load
+  useEffect(() => {
+    if (recipes.length > 0) {
+      setTomorrowMeals((prev) => ({
+        breakfast: prev.breakfast || recipes.find((r) => r.meal_type === 'breakfast') || recipes[0] || null,
+        lunch: prev.lunch || recipes.find((r) => r.meal_type === 'lunch') || recipes[1] || recipes[0] || null,
+        high_tea: prev.high_tea || recipes.find((r) => r.meal_type === 'high_tea') || recipes[2] || recipes[0] || null,
+        dinner: prev.dinner || recipes.find((r) => r.meal_type === 'dinner') || recipes[3] || recipes[0] || null,
+      }))
+    }
+  }, [recipes, mealPlans, tomorrowStr])
+
+  // Active sub-tab inside this component
+  const [subTab, setSubTab] = useState<'prep' | 'items' | 'plan'>('prep')
+
+  // Night Prep Tasks State
+  const defaultNightTasks: NightPrepTask[] = useMemo(
+    () => [
+      {
+        id: 'task-soak-beans',
+        title: 'Soak Beans / Lentils in Warm Water',
+        description: 'Rajma/chickpeas need 8–10 hours soaking overnight to cook soft and digestible tomorrow.',
+        category: 'soak',
+        forMeal: 'lunch',
+        isDone: false,
+        urgent: true,
+        estimatedMinutes: 5,
+      },
+      {
+        id: 'task-marinate-paneer',
+        title: 'Marinate Paneer / Veggies & Chill',
+        description: 'Toss paneer or veggies in yogurt, roasted cumin & chili powder; seal in container in fridge.',
+        category: 'marinate',
+        forMeal: 'dinner',
+        isDone: false,
+        urgent: true,
+        estimatedMinutes: 10,
+      },
+      {
+        id: 'task-defrost-greens',
+        title: 'Transfer Frozen Peas & Herbs to Fridge',
+        description: 'Move frozen green peas, corn or stock from freezer to refrigerator lower shelf to thaw slowly.',
+        category: 'defrost',
+        forMeal: 'lunch',
+        isDone: false,
+        urgent: false,
+        estimatedMinutes: 2,
+      },
+      {
+        id: 'task-prep-breakfast',
+        title: 'Overnight Oats / Batter Check',
+        description: 'Assemble rolled oats with milk & chia seeds in a jar, or check fermented batter fermentation.',
+        category: 'ferment',
+        forMeal: 'breakfast',
+        isDone: false,
+        urgent: true,
+        estimatedMinutes: 5,
+      },
+    ],
+    []
+  )
+
+  const [nightTasks, setNightTasks] = useState<NightPrepTask[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('mise_night_prep_tasks')
+        if (saved) return JSON.parse(saved)
+      } catch (e) {
+        console.warn('Failed to parse night prep tasks', e)
+      }
+    }
+    return defaultNightTasks
+  })
+
+  // Save tasks to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('mise_night_prep_tasks', JSON.stringify(nightTasks))
+      } catch (e) {
+        console.warn('Failed to save night prep tasks', e)
+      }
+    }
+  }, [nightTasks])
+
+  // New task input state
+  const [showAddTask, setShowAddTask] = useState(false)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskDesc, setNewTaskDesc] = useState('')
+  const [newTaskMeal, setNewTaskMeal] = useState<'breakfast' | 'lunch' | 'high_tea' | 'dinner' | 'general'>('lunch')
+
+  // Item Checklist for Tomorrow State
+  const defaultItems: TomorrowIngredient[] = useMemo(
+    () => [
+      { id: 'item-1', name: 'Rajma / Red Kidney Beans', amount: '250g', mealSlot: 'lunch', inPantry: true, checked: false },
+      { id: 'item-2', name: 'Fresh Paneer Block', amount: '250g', mealSlot: 'dinner', inPantry: true, checked: false },
+      { id: 'item-3', name: 'Basmati Long-Grain Rice', amount: '2 cups', mealSlot: 'lunch', inPantry: true, checked: false },
+      { id: 'item-4', name: 'Rolled Oats & Chia Seeds', amount: '1 cup', mealSlot: 'breakfast', inPantry: true, checked: false },
+      { id: 'item-5', name: 'Ripe Tomatoes & Onions', amount: '4 each', mealSlot: 'lunch', inPantry: true, checked: false },
+      { id: 'item-6', name: 'Ginger-Garlic Paste / Fresh Root', amount: '50g', mealSlot: 'dinner', inPantry: true, checked: false },
+      { id: 'item-7', name: 'Fresh Milk or Almond Milk', amount: '500ml', mealSlot: 'breakfast', inPantry: true, checked: false },
+      { id: 'item-8', name: 'Ghee or Cooking Butter', amount: '3 tbsp', mealSlot: 'dinner', inPantry: true, checked: false },
+      { id: 'item-9', name: 'Fresh Coriander / Cilantro', amount: '1 bunch', mealSlot: 'dinner', inPantry: false, checked: false },
+      { id: 'item-10', name: 'Cardamom & Chai Spices', amount: '10g', mealSlot: 'high_tea', inPantry: true, checked: false },
+    ],
+    []
+  )
+
+  const [itemsChecklist, setItemsChecklist] = useState<TomorrowIngredient[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('mise_tomorrow_items')
+        if (saved) return JSON.parse(saved)
+      } catch (e) {
+        console.warn('Failed to parse tomorrow items', e)
+      }
+    }
+    return defaultItems
+  })
+
+  // Save items to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('mise_tomorrow_items', JSON.stringify(itemsChecklist))
+      } catch (e) {
+        console.warn('Failed to save tomorrow items', e)
+      }
+    }
+  }, [itemsChecklist])
+
+  // Update inPantry flags based on user's actual inventory
+  useEffect(() => {
+    if (inventory.length > 0) {
+      setItemsChecklist((prev) =>
+        prev.map((item) => {
+          const matchingInv = inventory.find((inv) =>
+            item.name.toLowerCase().includes(inv.ingredient_name.toLowerCase()) ||
+            inv.ingredient_name.toLowerCase().includes(item.name.toLowerCase())
+          )
+          return {
+            ...item,
+            inPantry: !!matchingInv || item.inPantry,
+          }
+        })
+      )
+    }
+  }, [inventory])
+
+  // New item input state
+  const [newItemName, setNewItemName] = useState('')
+  const [newItemAmount, setNewItemAmount] = useState('')
+  const [newItemMeal, setNewItemMeal] = useState<'breakfast' | 'lunch' | 'high_tea' | 'dinner' | 'general'>('general')
+
+  // Real-time Countdown to Midnight
+  const [timeLeftToMidnight, setTimeLeftToMidnight] = useState<{
+    hours: number
+    minutes: number
+    seconds: number
+    isApproachingMidnight: boolean
+  }>({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+    isApproachingMidnight: false,
+  })
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date()
+      const midnight = new Date(now)
+      midnight.setHours(23, 59, 59, 999)
+
+      const diffMs = midnight.getTime() - now.getTime()
+      if (diffMs <= 0) {
+        setTimeLeftToMidnight({ hours: 0, minutes: 0, seconds: 0, isApproachingMidnight: true })
+        return
+      }
+
+      const totalSecs = Math.floor(diffMs / 1000)
+      const hours = Math.floor(totalSecs / 3600)
+      const minutes = Math.floor((totalSecs % 3600) / 60)
+      const seconds = totalSecs % 60
+
+      // Approaching midnight if after 8 PM (hours < 4)
+      const isApproachingMidnight = hours < 4
+
+      setTimeLeftToMidnight({ hours, minutes, seconds, isApproachingMidnight })
+    }
+
+    calculateTimeLeft()
+    const interval = setInterval(calculateTimeLeft, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Midnight Reminder Alert Settings & State
+  const [reminderEnabled, setReminderEnabled] = useState(true)
+  const [reminderNotificationFired, setReminderNotificationFired] = useState(false)
+  const [showReminderModal, setShowReminderModal] = useState(false)
+  const [reminderTriggerNotice, setReminderTriggerNotice] = useState<string | null>(null)
+
+  // Web Audio Chime player
+  const playGentleChime = () => {
+    if (typeof window === 'undefined') return
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioContextClass) return
+      const audioCtx = new AudioContextClass()
+
+      // Two-tone pleasant notification chime
+      const now = audioCtx.currentTime
+
+      const osc1 = audioCtx.createOscillator()
+      const gain1 = audioCtx.createGain()
+      osc1.type = 'sine'
+      osc1.frequency.setValueAtTime(587.33, now) // D5
+      gain1.gain.setValueAtTime(0.18, now)
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.45)
+      osc1.connect(gain1)
+      gain1.connect(audioCtx.destination)
+      osc1.start(now)
+      osc1.stop(now + 0.45)
+
+      const osc2 = audioCtx.createOscillator()
+      const gain2 = audioCtx.createGain()
+      osc2.type = 'sine'
+      osc2.frequency.setValueAtTime(880, now + 0.15) // A5
+      gain2.gain.setValueAtTime(0.2, now + 0.15)
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.75)
+      osc2.connect(gain2)
+      gain2.connect(audioCtx.destination)
+      osc2.start(now + 0.15)
+      osc2.stop(now + 0.75)
+    } catch (err) {
+      console.warn('Audio chime warning:', err)
+    }
+  }
+
+  // Pending counts
+  const pendingTasksCount = useMemo(() => nightTasks.filter((t) => !t.isDone).length, [nightTasks])
+  const pendingItemsCount = useMemo(() => itemsChecklist.filter((i) => !i.checked).length, [itemsChecklist])
+  const missingPantryCount = useMemo(() => itemsChecklist.filter((i) => !i.inPantry).length, [itemsChecklist])
+
+  // Trigger test or manual midnight reminder
+  const handleTriggerReminder = () => {
+    playGentleChime()
+    setShowReminderModal(true)
+    setReminderNotificationFired(true)
+    setReminderTriggerNotice('🔔 Reminder Alert Active: Check your night prep tasks and required ingredients before 11:59 PM!')
+  }
+
+  // Toggle night task completion
+  const handleToggleTask = (id: string) => {
+    setNightTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, isDone: !t.isDone } : t))
+    )
+  }
+
+  // Add custom night task
+  const handleAddCustomTask = () => {
+    if (!newTaskTitle.trim()) return
+    const newTask: NightPrepTask = {
+      id: `task-custom-${Date.now()}`,
+      title: newTaskTitle.trim(),
+      description: newTaskDesc.trim() || 'Custom night preparation task for tomorrow.',
+      category: 'custom',
+      forMeal: newTaskMeal,
+      isDone: false,
+      urgent: true,
+      estimatedMinutes: 5,
+    }
+    setNightTasks((prev) => [newTask, ...prev])
+    setNewTaskTitle('')
+    setNewTaskDesc('')
+    setShowAddTask(false)
+  }
+
+  // Delete night task
+  const handleDeleteTask = (id: string) => {
+    setNightTasks((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  // Toggle item check
+  const handleToggleItem = (id: string) => {
+    setItemsChecklist((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item))
+    )
+  }
+
+  // Add custom item
+  const handleAddCustomItem = () => {
+    if (!newItemName.trim()) return
+    const newItem: TomorrowIngredient = {
+      id: `item-custom-${Date.now()}`,
+      name: newItemName.trim(),
+      amount: newItemAmount.trim() || '1 portion',
+      mealSlot: newItemMeal,
+      inPantry: true,
+      checked: false,
+      isCustom: true,
+    }
+    setItemsChecklist((prev) => [newItem, ...prev])
+    setNewItemName('')
+    setNewItemAmount('')
+  }
+
+  // Mark item as added to pantry
+  const handleMarkItemInPantry = (item: TomorrowIngredient) => {
+    setItemsChecklist((prev) =>
+      prev.map((i) => (i.id === item.id ? { ...i, inPantry: true } : i))
+    )
+    if (onAddInventoryItem) {
+      onAddInventoryItem(item.name, 1, 'portion')
+    }
+  }
+
+  // Mark all items as checked/ready
+  const handleMarkAllItemsReady = () => {
+    setItemsChecklist((prev) => prev.map((i) => ({ ...i, checked: true })))
+  }
+
+  // Mark all night tasks as done
+  const handleMarkAllTasksDone = () => {
+    setNightTasks((prev) => prev.map((t) => ({ ...t, isDone: true })))
+  }
+
+  // Change a tomorrow meal slot
+  const handleSwapTomorrowMeal = (slot: 'breakfast' | 'lunch' | 'high_tea' | 'dinner', recipe: RecipeItem) => {
+    setTomorrowMeals((prev) => ({ ...prev, [slot]: recipe }))
+  }
+
+  return (
+    <div
+      id="tomorrow-plan-night-prep-section"
+      className="rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs space-y-5"
+    >
+      {/* 1. Header with Live Midnight Countdown & Reminder Status */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-[#f0ece3] pb-5">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-[#faede6] text-[#b25537]">
+              <Moon className="size-4 text-[#b25537]" />
+            </span>
+            <span className="text-xs font-bold uppercase tracking-widest text-[#b25537]">
+              Night Prep &amp; Tomorrow Readiness
+            </span>
+            <span className="rounded-full bg-[#223129] px-2.5 py-0.5 text-[10px] font-bold text-white uppercase">
+              {tomorrowFormatted}
+            </span>
+          </div>
+
+          <h2 className="mt-1 font-serif text-xl sm:text-2xl font-bold tracking-tight text-[#223129]">
+            Tomorrow&apos;s Plan, Night Prep &amp; Item Checklist
+          </h2>
+          <p className="mt-1 text-xs text-[#736e65] max-w-2xl">
+            Get everything pre-ready tonight (soak beans, marinate, chill oats) and verify required items before midnight so tomorrow runs completely stress-free.
+          </p>
+        </div>
+
+        {/* Midnight Reminder Card & Trigger */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+          {/* Realtime Countdown pill */}
+          <div
+            id="midnight-countdown-badge"
+            className={`rounded-2xl border px-3.5 py-2 flex items-center gap-2.5 shadow-xs ${
+              pendingTasksCount > 0
+                ? 'border-[#f2cebe] bg-[#fef6f2] text-[#934329]'
+                : 'border-[#c4e2cd] bg-[#eef6f0] text-[#245e38]'
+            }`}
+          >
+            <Clock className="size-4 shrink-0" />
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider">
+                {pendingTasksCount > 0 ? 'Midnight Prep Deadline' : 'All Prepped for Night'}
+              </div>
+              <div className="font-mono text-xs font-bold">
+                {pendingTasksCount > 0 ? (
+                  <>
+                    ⏳ {String(timeLeftToMidnight.hours).padStart(2, '0')}h :{' '}
+                    {String(timeLeftToMidnight.minutes).padStart(2, '0')}m :{' '}
+                    {String(timeLeftToMidnight.seconds).padStart(2, '0')}s to 11:59 PM
+                  </>
+                ) : (
+                  <span>Ready for a peaceful sleep 🌙</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Test / Manual Reminder Button */}
+          <button
+            type="button"
+            id="test-midnight-reminder-btn"
+            onClick={handleTriggerReminder}
+            className="rounded-2xl bg-[#223129] hover:bg-[#15201a] text-white px-3.5 py-2 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs"
+            title="Preview midnight reminder alarm and checklist status"
+          >
+            <BellRing className="size-3.5 text-[#df9776]" />
+            <span>Reminder Alert</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Reminder Notification Banner if Alert is Fired */}
+      {reminderTriggerNotice && (
+        <div
+          id="midnight-reminder-banner"
+          className="rounded-2xl bg-[#fff7ed] border border-[#ffedd5] p-3.5 flex items-center justify-between gap-3 text-xs text-[#9a3412]"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-7 items-center justify-center rounded-xl bg-[#fed7aa] text-[#c2410c] shrink-0">
+              <Bell className="size-4 animate-bounce" />
+            </span>
+            <div>
+              <p className="font-bold text-[#7c2d12]">
+                Night-Before Alert: {pendingTasksCount} tasks &amp; {pendingItemsCount} items need your check before 11:59 PM!
+              </p>
+              <p className="text-[11px] text-[#9a3412]">
+                Soaking beans and defrosting requires overnight duration. If delayed past midnight, cooking time will double tomorrow.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReminderTriggerNotice(null)}
+            className="text-[#9a3412] hover:text-[#7c2d12] p-1"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
+      {/* 2. Sub-tab Navigation */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f0ece3] pb-2">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            id="tab-night-prep-tasks"
+            onClick={() => setSubTab('prep')}
+            className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+              subTab === 'prep'
+                ? 'bg-[#223129] text-white shadow-xs'
+                : 'bg-[#f0ece3] text-[#555047] hover:bg-[#e4ded3]'
+            }`}
+          >
+            <Moon className="size-3.5" />
+            <span>Pre-Ready Tonight</span>
+            {pendingTasksCount > 0 && (
+              <span className="size-4 rounded-full bg-[#b25537] text-white text-[10px] flex items-center justify-center font-mono">
+                {pendingTasksCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            id="tab-item-checklist"
+            onClick={() => setSubTab('items')}
+            className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+              subTab === 'items'
+                ? 'bg-[#223129] text-white shadow-xs'
+                : 'bg-[#f0ece3] text-[#555047] hover:bg-[#e4ded3]'
+            }`}
+          >
+            <ShoppingBag className="size-3.5" />
+            <span>Tomorrow Items Checklist</span>
+            {missingPantryCount > 0 ? (
+              <span className="rounded-full bg-[#fbeae5] px-1.5 py-0.2 text-[10px] font-bold text-[#b25537]">
+                {missingPantryCount} missing
+              </span>
+            ) : (
+              <span className="size-4 rounded-full bg-[#2e7d32] text-white text-[10px] flex items-center justify-center">
+                ✓
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            id="tab-tomorrow-plan"
+            onClick={() => setSubTab('plan')}
+            className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+              subTab === 'plan'
+                ? 'bg-[#223129] text-white shadow-xs'
+                : 'bg-[#f0ece3] text-[#555047] hover:bg-[#e4ded3]'
+            }`}
+          >
+            <Calendar className="size-3.5" />
+            <span>Tomorrow&apos;s Menu (4 Slots)</span>
+          </button>
+        </div>
+
+        {/* Quick Batch Action */}
+        {subTab === 'prep' && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAddTask((prev) => !prev)}
+              className="rounded-xl border border-[#ded9cf] bg-white px-2.5 py-1 text-xs font-semibold text-[#555047] hover:border-[#b25537] hover:text-[#b25537] transition flex items-center gap-1"
+            >
+              <Plus className="size-3" />
+              <span>Add Night Task</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleMarkAllTasksDone}
+              className="text-xs text-[#2e7d32] font-semibold hover:underline"
+            >
+              Mark All Done ✓
+            </button>
+          </div>
+        )}
+
+        {subTab === 'items' && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleMarkAllItemsReady}
+              className="text-xs text-[#2e7d32] font-semibold hover:underline"
+            >
+              Mark All Have ✓
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ======================= VIEW 1: PRE-READY TONIGHT (NIGHT TASKS) ======================= */}
+      {subTab === 'prep' && (
+        <div className="space-y-4">
+          {/* Progress Card */}
+          <div className="rounded-2xl border border-[#ded9cf] bg-[#faf8f4] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#223129]">Night Prep Progress</span>
+                <span className="text-xs text-[#736e65]">
+                  ({nightTasks.length - pendingTasksCount} of {nightTasks.length} tasks ready)
+                </span>
+              </div>
+              <p className="text-[11px] text-[#736e65] mt-0.5">
+                Complete these tonight before midnight to ensure tomorrow&apos;s cooking takes 50% less time.
+              </p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="flex items-center gap-3 sm:w-48">
+              <div className="h-2 w-full rounded-full bg-[#ded9cf] overflow-hidden">
+                <div
+                  className="h-full bg-[#b25537] transition-all duration-300"
+                  style={{
+                    width: `${nightTasks.length > 0 ? ((nightTasks.length - pendingTasksCount) / nightTasks.length) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+              <span className="font-mono text-xs font-bold text-[#223129]">
+                {nightTasks.length > 0
+                  ? Math.round(((nightTasks.length - pendingTasksCount) / nightTasks.length) * 100)
+                  : 0}
+                %
+              </span>
+            </div>
+          </div>
+
+          {/* Add custom night prep task box */}
+          {showAddTask && (
+            <div className="rounded-2xl border border-[#faede6] bg-[#fdfaf7] p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-[#223129]">Add Custom Night Prep Task</h4>
+                <button
+                  type="button"
+                  onClick={() => setShowAddTask(false)}
+                  className="text-xs text-[#736e65] hover:text-[#223129]"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  placeholder="Task title (e.g., Boil 4 potatoes for morning sandwich)"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="sm:col-span-2 rounded-xl border border-[#ded9cf] bg-white px-3 py-1.5 text-xs text-[#223129] focus:outline-none focus:border-[#b25537]"
+                />
+                <select
+                  value={newTaskMeal}
+                  onChange={(e: any) => setNewTaskMeal(e.target.value)}
+                  className="rounded-xl border border-[#ded9cf] bg-white px-3 py-1.5 text-xs text-[#223129] focus:outline-none focus:border-[#b25537]"
+                >
+                  <option value="breakfast">For Tomorrow Breakfast</option>
+                  <option value="lunch">For Tomorrow Lunch</option>
+                  <option value="high_tea">For Tomorrow High Tea</option>
+                  <option value="dinner">For Tomorrow Dinner</option>
+                  <option value="general">General Pantry Prep</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Brief note or instructions (optional)"
+                  value={newTaskDesc}
+                  onChange={(e) => setNewTaskDesc(e.target.value)}
+                  className="flex-1 rounded-xl border border-[#ded9cf] bg-white px-3 py-1.5 text-xs text-[#223129] focus:outline-none focus:border-[#b25537]"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomTask}
+                  className="rounded-xl bg-[#b25537] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#934329] transition shrink-0"
+                >
+                  Save Task
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* List of Night Tasks */}
+          <div className="space-y-2.5">
+            {nightTasks.map((task) => {
+              const mealBadge =
+                task.forMeal === 'breakfast'
+                  ? 'bg-[#fef3c7] text-[#b45309]'
+                  : task.forMeal === 'lunch'
+                  ? 'bg-[#d1fae5] text-[#065f46]'
+                  : task.forMeal === 'high_tea'
+                  ? 'bg-[#fef3c7] text-[#92400e]'
+                  : task.forMeal === 'dinner'
+                  ? 'bg-[#e0e7ff] text-[#3730a3]'
+                  : 'bg-[#f0ece3] text-[#555047]'
+
+              return (
+                <div
+                  key={task.id}
+                  className={`rounded-2xl border p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition ${
+                    task.isDone
+                      ? 'border-[#e4ded3] bg-[#f9f8f6] opacity-75'
+                      : 'border-[#ded9cf] bg-white hover:border-[#b25537]/50 shadow-xs'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTask(task.id)}
+                      className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-lg border transition ${
+                        task.isDone
+                          ? 'border-[#2e7d32] bg-[#2e7d32] text-white'
+                          : 'border-[#ded9cf] hover:border-[#b25537] bg-white'
+                      }`}
+                      aria-label={task.isDone ? 'Mark task as pending' : 'Mark task as done'}
+                    >
+                      {task.isDone && <Check className="size-3.5" />}
+                    </button>
+
+                    <div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`text-xs font-bold ${
+                            task.isDone ? 'line-through text-[#8d887d]' : 'text-[#223129]'
+                          }`}
+                        >
+                          {task.title}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.2 text-[10px] font-bold uppercase ${mealBadge}`}>
+                          {task.forMeal}
+                        </span>
+                        {task.urgent && !task.isDone && (
+                          <span className="rounded-full bg-[#faede6] px-2 py-0.2 text-[10px] font-bold uppercase text-[#b25537]">
+                            Before 11:59 PM
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-[11px] text-[#736e65]">{task.description}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#f0ece3]">
+                    <span className="text-[11px] text-[#736e65]">⏱ ~{task.estimatedMinutes} min</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTask(task.id)}
+                        className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
+                          task.isDone
+                            ? 'bg-[#eef6f0] text-[#245e38] hover:bg-[#d5ecd8]'
+                            : 'bg-[#223129] text-white hover:bg-[#b25537]'
+                        }`}
+                      >
+                        {task.isDone ? 'Done ✓' : '[ Mark Done ]'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTask(task.id)}
+                        className="text-[#8d887d] hover:text-[#b25537] p-1 transition"
+                        title="Remove task"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Quick explanation box */}
+          <div className="rounded-2xl border border-[#faede6] bg-[#fdfaf7] p-3.5 flex items-center gap-3 text-xs text-[#736e65]">
+            <Sparkles className="size-4 text-[#df9776] shrink-0" />
+            <p>
+              <strong>Why night prep matters:</strong> Beans soaked for 8+ hours cook in 15 minutes instead of 45, and paneer marinated overnight absorbs 3x more flavor. The midnight reminder ensures you don&apos;t wake up to an unprepared kitchen!
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ======================= VIEW 2: TOMORROW ITEMS CHECKLIST ======================= */}
+      {subTab === 'items' && (
+        <div className="space-y-4">
+          {/* Header info & Add Item input */}
+          <div className="rounded-2xl border border-[#ded9cf] bg-[#faf8f4] p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#223129]">
+                  Required Ingredients for Tomorrow
+                </h4>
+                <p className="text-[11px] text-[#736e65]">
+                  Cross-referenced with your kitchen inventory. Items with ⚠️ are missing or need checking.
+                </p>
+              </div>
+              <span className="text-xs font-bold text-[#b25537]">
+                {missingPantryCount > 0 ? `${missingPantryCount} items missing from pantry` : 'All items in stock!'}
+              </span>
+            </div>
+
+            {/* Quick Add Custom Item bar */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-[#ded9cf]/60">
+              <input
+                type="text"
+                placeholder="Add ingredient (e.g. Kasuri Methi, Lemon, Bread)..."
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddCustomItem()
+                }}
+                className="flex-1 rounded-xl border border-[#ded9cf] bg-white px-3 py-1.5 text-xs text-[#223129] focus:outline-none focus:border-[#b25537]"
+              />
+              <input
+                type="text"
+                placeholder="Qty / Amount (e.g. 250g)"
+                value={newItemAmount}
+                onChange={(e) => setNewItemAmount(e.target.value)}
+                className="w-28 rounded-xl border border-[#ded9cf] bg-white px-3 py-1.5 text-xs text-[#223129] focus:outline-none focus:border-[#b25537]"
+              />
+              <select
+                value={newItemMeal}
+                onChange={(e: any) => setNewItemMeal(e.target.value)}
+                className="rounded-xl border border-[#ded9cf] bg-white px-3 py-1.5 text-xs text-[#223129] focus:outline-none focus:border-[#b25537]"
+              >
+                <option value="general">General</option>
+                <option value="breakfast">Breakfast</option>
+                <option value="lunch">Lunch</option>
+                <option value="high_tea">High Tea</option>
+                <option value="dinner">Dinner</option>
+              </select>
+              <button
+                type="button"
+                onClick={handleAddCustomItem}
+                className="rounded-xl bg-[#223129] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#15201a] transition flex items-center justify-center gap-1 shrink-0"
+              >
+                <Plus className="size-3.5" />
+                <span>Add Item</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Checklist Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {itemsChecklist.map((item) => (
+              <div
+                key={item.id}
+                className={`rounded-xl border p-3 flex items-center justify-between gap-2.5 transition ${
+                  item.checked
+                    ? 'border-[#c4e2cd] bg-[#f7faf8]'
+                    : !item.inPantry
+                    ? 'border-[#f2cebe] bg-[#fdf8f5]'
+                    : 'border-[#ded9cf] bg-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleItem(item.id)}
+                    className={`flex size-5 shrink-0 items-center justify-center rounded-md border transition ${
+                      item.checked
+                        ? 'border-[#2e7d32] bg-[#2e7d32] text-white'
+                        : 'border-[#ded9cf] hover:border-[#b25537] bg-white'
+                    }`}
+                  >
+                    {item.checked && <Check className="size-3.5" />}
+                  </button>
+
+                  <div className="min-w-0">
+                    <span
+                      className={`text-xs font-bold truncate block ${
+                        item.checked ? 'line-through text-[#8d887d]' : 'text-[#223129]'
+                      }`}
+                    >
+                      {item.name}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#736e65]">
+                      <span>{item.amount}</span>
+                      <span>•</span>
+                      <span className="capitalize">{item.mealSlot}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {item.inPantry ? (
+                    <span className="rounded-md bg-[#eef6f0] px-2 py-0.5 text-[10px] font-semibold text-[#245e38]">
+                      In Kitchen ✓
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleMarkItemInPantry(item)}
+                      className="rounded-md bg-[#faede6] px-2 py-0.5 text-[10px] font-bold text-[#b25537] hover:bg-[#b25537] hover:text-white transition"
+                      title="Click to mark as in stock"
+                    >
+                      + Have It
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ======================= VIEW 3: TOMORROW'S MENU (4 DAILY SLOTS) ======================= */}
+      {subTab === 'plan' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#223129]">
+                Tomorrow&apos;s 4 Daily Meal Slots
+              </h4>
+              <p className="text-[11px] text-[#736e65]">
+                Scheduled dishes for tomorrow. Click &quot;Cook&quot; to begin anytime or swap with another recipe.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (onRefreshPlans) onRefreshPlans()
+              }}
+              className="flex items-center gap-1 text-xs text-[#736e65] hover:text-[#223129]"
+            >
+              <RefreshCw className="size-3" />
+              <span>Refresh Menu</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              {
+                slot: 'BREAKFAST',
+                key: 'breakfast' as const,
+                icon: Sun,
+                time: '8:30 AM',
+                badgeColor: 'text-[#d97706] bg-[#fef3c7]',
+                recipe: tomorrowMeals.breakfast,
+              },
+              {
+                slot: 'LUNCH',
+                key: 'lunch' as const,
+                icon: Utensils,
+                time: '1:30 PM',
+                badgeColor: 'text-[#059669] bg-[#d1fae5]',
+                recipe: tomorrowMeals.lunch,
+              },
+              {
+                slot: 'HIGH TEA',
+                key: 'high_tea' as const,
+                icon: Coffee,
+                time: '5:00 PM',
+                badgeColor: 'text-[#b45309] bg-[#fef3c7]',
+                recipe: tomorrowMeals.high_tea,
+              },
+              {
+                slot: 'DINNER',
+                key: 'dinner' as const,
+                icon: Moon,
+                time: '8:30 PM',
+                badgeColor: 'text-[#4338ca] bg-[#e0e7ff]',
+                recipe: tomorrowMeals.dinner,
+              },
+            ].map(({ slot, key, icon: SlotIcon, time, badgeColor, recipe }) => {
+              if (!recipe) return null
+              return (
+                <div
+                  key={slot}
+                  className="rounded-2xl border border-[#ded9cf] bg-white p-3.5 flex flex-col justify-between hover:border-[#b25537]/60 transition shadow-xs group"
+                >
+                  <div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span
+                        className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeColor}`}
+                      >
+                        <SlotIcon className="size-3" />
+                        {slot}
+                      </span>
+                      <span className="text-[10px] font-medium text-[#736e65]">⏱ {time}</span>
+                    </div>
+
+                    {/* Image */}
+                    {recipe.image_url && (
+                      <div className="relative mb-2.5 h-24 w-full overflow-hidden rounded-xl bg-[#f0ece3]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={recipe.image_url}
+                          alt={recipe.name}
+                          className="size-full object-cover group-hover:scale-105 transition duration-300"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+
+                    <h4 className="font-serif text-xs font-bold text-[#223129] line-clamp-1">
+                      {recipe.name}
+                    </h4>
+                    <p className="mt-1 text-[10px] text-[#736e65] line-clamp-2">
+                      {recipe.description || 'Homestyle nutritious recipe.'}
+                    </p>
+
+                    <div className="mt-2 text-[10px] font-semibold text-[#b25537]">
+                      Prep: {recipe.prep_time}m • Cook: {recipe.cook_time}m
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-[#f0ece3] flex items-center justify-between gap-1.5">
+                    {/* Swap selector */}
+                    <select
+                      value={recipe.id}
+                      onChange={(e) => {
+                        const nextRec = recipes.find((r) => r.id === e.target.value)
+                        if (nextRec) handleSwapTomorrowMeal(key, nextRec)
+                      }}
+                      className="text-[10px] rounded-lg border border-[#ded9cf] bg-[#fbf9f5] px-1.5 py-1 text-[#555047] focus:outline-none max-w-[100px] truncate"
+                    >
+                      {recipes.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onStartCooking) onStartCooking(recipe)
+                      }}
+                      className="rounded-lg bg-[#b25537] px-2.5 py-1 text-[10px] font-bold text-white hover:bg-[#934329] transition flex items-center gap-1 shadow-xs"
+                    >
+                      <Flame className="size-3" />
+                      <span>Cook</span>
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ======================= 4. MIDNIGHT REMINDER MODAL ======================= */}
+      {showReminderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-3xl border border-[#ded9cf] bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 items-center justify-center rounded-2xl bg-[#faede6] text-[#b25537]">
+                  <BellRing className="size-5 animate-pulse" />
+                </span>
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-[#223129]">
+                    🌙 Night Prep Reminder Alert
+                  </h3>
+                  <p className="text-xs text-[#736e65]">
+                    Tomorrow is just around the corner. Check these before midnight!
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReminderModal(false)}
+                className="rounded-xl p-1 text-[#8d887d] hover:bg-[#f0ece3] transition"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {/* Countdown Banner */}
+            <div className="rounded-2xl bg-[#223129] text-white p-3.5 flex items-center justify-between">
+              <span className="text-xs font-bold text-[#df9776]">Countdown to Midnight (11:59 PM):</span>
+              <span className="font-mono text-sm font-bold">
+                {String(timeLeftToMidnight.hours).padStart(2, '0')}h :{' '}
+                {String(timeLeftToMidnight.minutes).padStart(2, '0')}m :{' '}
+                {String(timeLeftToMidnight.seconds).padStart(2, '0')}s
+              </span>
+            </div>
+
+            {/* Pending Tasks List in Modal */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#736e65]">
+                Pending Night Tasks ({pendingTasksCount}):
+              </p>
+              {pendingTasksCount === 0 ? (
+                <div className="rounded-xl bg-[#eef6f0] p-3 text-xs font-semibold text-[#245e38] flex items-center gap-2">
+                  <CheckCircle2 className="size-4" />
+                  <span>All night prep tasks are completed! You are ready to rest.</span>
+                </div>
+              ) : (
+                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                  {nightTasks
+                    .filter((t) => !t.isDone)
+                    .map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-center justify-between rounded-xl border border-[#ded9cf] p-2.5 text-xs bg-[#faf8f4]"
+                      >
+                        <span className="font-semibold text-[#223129]">{t.title}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTask(t.id)}
+                          className="rounded-lg bg-[#b25537] px-2 py-1 text-[10px] font-bold text-white hover:bg-[#934329]"
+                        >
+                          Mark Done
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Missing items warning */}
+            {missingPantryCount > 0 && (
+              <div className="rounded-xl bg-[#fff7ed] border border-[#fed7aa] p-3 text-xs text-[#9a3412]">
+                <strong>⚠️ Missing Pantry Alert:</strong> You have {missingPantryCount} ingredient(s) not confirmed in your kitchen pantry for tomorrow&apos;s meals.
+              </div>
+            )}
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#f0ece3]">
+              <button
+                type="button"
+                onClick={() => {
+                  playGentleChime()
+                }}
+                className="rounded-xl border border-[#ded9cf] px-3.5 py-2 text-xs font-bold text-[#555047] hover:border-[#b25537] hover:text-[#b25537] transition flex items-center gap-1.5"
+              >
+                <Volume2 className="size-3.5" />
+                <span>Re-play Chime</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowReminderModal(false)}
+                className="rounded-xl bg-[#223129] px-4 py-2 text-xs font-bold text-white hover:bg-[#15201a] transition"
+              >
+                Got It, Finishing Up
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
