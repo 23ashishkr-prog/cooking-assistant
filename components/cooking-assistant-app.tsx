@@ -641,7 +641,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
             <div className="mise-hero relative overflow-hidden rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-8 shadow-xs">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/gen-z-food-hero.png"
+                src="/gen-z-food-hero.jpg"
                 alt="A vibrant bowl of spicy noodles with fresh herbs and dumplings"
                 className="mise-hero-art"
               />
@@ -792,13 +792,13 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                           <div className="relative mb-3 h-28 w-full overflow-hidden rounded-xl bg-[#f0ece3]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={item.image_url || '/gen-z-food-hero.png'}
+                              src={item.image_url || '/gen-z-food-hero.jpg'}
                               alt={item.name}
                               className="size-full object-cover group-hover:scale-105 transition duration-300"
                               loading="lazy"
                               onError={(event) => {
                                 event.currentTarget.onerror = null
-                                event.currentTarget.src = '/gen-z-food-hero.png'
+                                event.currentTarget.src = '/gen-z-food-hero.jpg'
                               }}
                             />
                           </div>
@@ -1083,7 +1083,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
               <div className="mise-scan-layout">
                 <div className="mise-scan-photo">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/premium-pantry.png" alt="A well-stocked refrigerator and pantry ready to scan" />
+                  <img src="/premium-pantry.jpg" alt="A well-stocked refrigerator and pantry ready to scan" />
                   <span>AI pantry vision</span>
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col justify-center">
@@ -1353,13 +1353,13 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                           <div className="relative mb-2 h-24 w-full overflow-hidden rounded-xl bg-[#e8e4db]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={rec.image_url || '/gen-z-food-hero.png'}
+                              src={rec.image_url || '/gen-z-food-hero.jpg'}
                               alt={rec.name}
                               className="size-full object-cover"
                               loading="lazy"
                               onError={(event) => {
                                 event.currentTarget.onerror = null
-                                event.currentTarget.src = '/gen-z-food-hero.png'
+                                event.currentTarget.src = '/gen-z-food-hero.jpg'
                               }}
                             />
                           </div>

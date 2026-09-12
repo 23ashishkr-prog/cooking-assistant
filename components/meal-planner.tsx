@@ -318,7 +318,7 @@ export function MealPlanner({ initialRecipes }: { initialRecipes: Recipe[] }) {
                             className="size-full object-cover transition duration-300 group-hover:scale-105"
                             onError={(event) => {
                               event.currentTarget.onerror = null
-                              event.currentTarget.src = '/gen-z-food-hero.png'
+                              event.currentTarget.src = '/gen-z-food-hero.jpg'
                             }}
                           />
                         ) : (
@@ -425,12 +425,12 @@ export function MealPlanner({ initialRecipes }: { initialRecipes: Recipe[] }) {
 
                   {(
                     <img
-                      src={selectedRecipe.image_url || '/gen-z-food-hero.png'}
+                      src={selectedRecipe.image_url || '/gen-z-food-hero.jpg'}
                       alt={selectedRecipe.title}
                       className="size-20 shrink-0 rounded-2xl object-cover shadow-md"
                       onError={(event) => {
                         event.currentTarget.onerror = null
-                        event.currentTarget.src = '/gen-z-food-hero.png'
+                        event.currentTarget.src = '/gen-z-food-hero.jpg'
                       }}
                     />
                   )}

@@ -1097,13 +1097,13 @@ export function TomorrowPlanNightPrep({
                       <div className="relative mb-2.5 h-24 w-full overflow-hidden rounded-xl bg-[#f0ece3]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={recipe.image_url || '/gen-z-food-hero.png'}
+                          src={recipe.image_url || '/gen-z-food-hero.jpg'}
                           alt={recipe.name}
                           className="size-full object-cover group-hover:scale-105 transition duration-300"
                           loading="lazy"
                           onError={(event) => {
                             event.currentTarget.onerror = null
-                            event.currentTarget.src = '/gen-z-food-hero.png'
+                            event.currentTarget.src = '/gen-z-food-hero.jpg'
                           }}
                         />
                       </div>
