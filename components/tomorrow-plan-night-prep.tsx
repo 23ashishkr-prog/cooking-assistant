@@ -19,7 +19,6 @@ import {
   Sun,
   Trash2,
   Utensils,
-  Volume2,
   X,
 } from 'lucide-react'
 import type { RecipeItem, InventoryItem, MealPlanItem } from './cooking-assistant-app'
@@ -271,10 +270,14 @@ export function TomorrowPlanNightPrep({
   // The selected prep deadline is the source of truth for the countdown and alert copy.
   const [reminderTime, setReminderTime] = useState('23:00')
   const deadlineOptions = [
+    { value: '20:00', label: '8:00 PM' },
+    { value: '20:30', label: '8:30 PM' },
     { value: '21:00', label: '9:00 PM' },
+    { value: '21:30', label: '9:30 PM' },
     { value: '22:00', label: '10:00 PM' },
     { value: '22:30', label: '10:30 PM' },
     { value: '23:00', label: '11:00 PM' },
+    { value: '23:30', label: '11:30 PM' },
     { value: '23:45', label: '11:45 PM' },
   ] as const
 
@@ -338,7 +341,6 @@ export function TomorrowPlanNightPrep({
   // Reminder Alert Settings & State
   const [reminderEnabled, setReminderEnabled] = useState(true)
   const [reminderNotificationFired, setReminderNotificationFired] = useState(false)
-  const [showReminderModal, setShowReminderModal] = useState(false)
   const [reminderTriggerNotice, setReminderTriggerNotice] = useState<string | null>(null)
 
   // Web Audio Chime player
@@ -383,12 +385,11 @@ export function TomorrowPlanNightPrep({
   const pendingItemsCount = useMemo(() => itemsChecklist.filter((i) => !i.checked).length, [itemsChecklist])
   const missingPantryCount = useMemo(() => itemsChecklist.filter((i) => !i.inPantry).length, [itemsChecklist])
 
-  // Trigger the selected prep deadline reminder manually or automatically.
+  // Keep reminders inline so opening the page never interrupts the user.
   const handleTriggerReminder = () => {
     playGentleChime()
-    setShowReminderModal(true)
     setReminderNotificationFired(true)
-    setReminderTriggerNotice(`Reminder alert active: check your night prep tasks and required ingredients before ${reminderTimeLabel}.`)
+    setReminderTriggerNotice(`Prep check: ${pendingTasksCount} tasks and ${pendingItemsCount} items before ${reminderTimeLabel}.`)
   }
 
   useEffect(() => {
@@ -481,7 +482,7 @@ export function TomorrowPlanNightPrep({
   return (
     <div
       id="tomorrow-plan-night-prep-section"
-      className="rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs space-y-5"
+      className="mise-prep-panel rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs space-y-5"
     >
       {/* 1. Header with Live Prep Deadline Countdown & Reminder Status */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-[#f0ece3] pb-5">
@@ -499,10 +500,10 @@ export function TomorrowPlanNightPrep({
           </div>
 
           <h2 className="mt-1 font-serif text-xl sm:text-2xl font-bold tracking-tight text-[#223129]">
-            Tomorrow&apos;s Plan, Night Prep &amp; Item Checklist
+            Prep tonight. Cruise tomorrow.
           </h2>
           <p className="mt-1 text-xs text-[#736e65] max-w-2xl">
-            Get everything pre-ready tonight (soak beans, marinate, chill oats) and verify required items before your chosen deadline so tomorrow runs completely stress-free.
+            Finish the essentials before your deadline.
           </p>
         </div>
 
@@ -536,32 +537,21 @@ export function TomorrowPlanNightPrep({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-[#ded9cf] bg-[#fffdf9] px-2.5 py-1.5">
-            <span className="text-[10px] font-semibold text-[#736e65]">Deadline</span>
-            {deadlineOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => updateReminderTime(option.value)}
-                aria-pressed={reminderTime === option.value}
-                className={`rounded-lg px-2 py-1 text-[10px] font-bold transition ${
-                  reminderTime === option.value
-                    ? 'bg-[#223129] text-white'
-                    : 'text-[#736e65] hover:bg-[#faede6] hover:text-[#934329]'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-            <label htmlFor="night-reminder-time" className="sr-only">Choose your prep deadline</label>
-            <input
+          <div className="mise-deadline-select flex items-center gap-2 rounded-2xl border border-[#ded9cf] bg-[#fffdf9] px-3 py-2">
+            <label htmlFor="night-reminder-time" className="text-[10px] font-bold uppercase tracking-wider text-[#736e65]">
+              Deadline
+            </label>
+            <select
               id="night-reminder-time"
-              type="time"
               value={reminderTime}
               onChange={(event) => updateReminderTime(event.target.value)}
-              aria-label="Choose your exact prep deadline"
-              className="bg-transparent text-xs font-bold text-[#223129] outline-none"
-            />
+              aria-label="Choose prep deadline"
+              className="cursor-pointer bg-transparent pr-6 text-xs font-extrabold text-[#223129] outline-none"
+            >
+              {deadlineOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Test / Manual Reminder Button */}
@@ -570,10 +560,10 @@ export function TomorrowPlanNightPrep({
             id="test-prep-deadline-reminder-btn"
             onClick={handleTriggerReminder}
             className="rounded-2xl bg-[#223129] hover:bg-[#15201a] text-white px-3.5 py-2 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs"
-            title="Preview prep deadline reminder alarm and checklist status"
+            title="Show prep reminder"
           >
             <BellRing className="size-3.5 text-[#df9776]" />
-            <span>Reminder Alert</span>
+            <span>Check prep</span>
           </button>
         </div>
       </div>
@@ -589,12 +579,7 @@ export function TomorrowPlanNightPrep({
               <Bell className="size-4 animate-bounce" />
             </span>
             <div>
-              <p className="font-bold text-[#7c2d12]">
-                Night-Before Alert: {pendingTasksCount} tasks &amp; {pendingItemsCount} items need your check before {reminderTimeLabel}!
-              </p>
-              <p className="text-[11px] text-[#9a3412]">
-                Soaking beans and defrosting require overnight duration. If delayed past your prep deadline, cooking time may double tomorrow.
-              </p>
+              <p className="font-bold text-[#7c2d12]">{reminderTriggerNotice}</p>
             </div>
           </div>
           <button
@@ -714,7 +699,7 @@ export function TomorrowPlanNightPrep({
                 </span>
               </div>
               <p className="text-[11px] text-[#736e65] mt-0.5">
-                Complete these tonight before your prep deadline to ensure tomorrow&apos;s cooking takes 50% less time.
+                Priority prep for tomorrow.
               </p>
             </div>
 
@@ -1150,106 +1135,6 @@ export function TomorrowPlanNightPrep({
         </div>
       )}
 
-      {/* ======================= 4. MIDNIGHT REMINDER MODAL ======================= */}
-      {showReminderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-3xl border border-[#ded9cf] bg-white p-6 shadow-xl space-y-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-2xl bg-[#faede6] text-[#b25537]">
-                  <BellRing className="size-5 animate-pulse" />
-                </span>
-                <div>
-                  <h3 className="font-serif text-lg font-bold text-[#223129]">
-                    🌙 Night Prep Reminder Alert
-                  </h3>
-                  <p className="text-xs text-[#736e65]">
-                    Tomorrow is just around the corner. Check these before your prep deadline!
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowReminderModal(false)}
-                className="rounded-xl p-1 text-[#8d887d] hover:bg-[#f0ece3] transition"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            {/* Countdown Banner */}
-            <div className="rounded-2xl bg-[#223129] text-white p-3.5 flex items-center justify-between">
-              <span className="text-xs font-bold text-[#df9776]">Countdown to {reminderTime}:</span>
-              <span className="font-mono text-sm font-bold">
-                {String(timeLeftToReminder.hours).padStart(2, '0')}h :{' '}
-                {String(timeLeftToReminder.minutes).padStart(2, '0')}m :{' '}
-                {String(timeLeftToReminder.seconds).padStart(2, '0')}s
-              </span>
-            </div>
-
-            {/* Pending Tasks List in Modal */}
-            <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-[#736e65]">
-                Pending Night Tasks ({pendingTasksCount}):
-              </p>
-              {pendingTasksCount === 0 ? (
-                <div className="rounded-xl bg-[#eef6f0] p-3 text-xs font-semibold text-[#245e38] flex items-center gap-2">
-                  <CheckCircle2 className="size-4" />
-                  <span>All night prep tasks are completed! You are ready to rest.</span>
-                </div>
-              ) : (
-                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-                  {nightTasks
-                    .filter((t) => !t.isDone)
-                    .map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-center justify-between rounded-xl border border-[#ded9cf] p-2.5 text-xs bg-[#faf8f4]"
-                      >
-                        <span className="font-semibold text-[#223129]">{t.title}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleTask(t.id)}
-                          className="rounded-lg bg-[#b25537] px-2 py-1 text-[10px] font-bold text-white hover:bg-[#934329]"
-                        >
-                          Mark Done
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-
-            {/* Missing items warning */}
-            {missingPantryCount > 0 && (
-              <div className="rounded-xl bg-[#fff7ed] border border-[#fed7aa] p-3 text-xs text-[#9a3412]">
-                <strong>⚠️ Missing Pantry Alert:</strong> You have {missingPantryCount} ingredient(s) not confirmed in your kitchen pantry for tomorrow&apos;s meals.
-              </div>
-            )}
-
-            {/* Footer Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#f0ece3]">
-              <button
-                type="button"
-                onClick={() => {
-                  playGentleChime()
-                }}
-                className="rounded-xl border border-[#ded9cf] px-3.5 py-2 text-xs font-bold text-[#555047] hover:border-[#b25537] hover:text-[#b25537] transition flex items-center gap-1.5"
-              >
-                <Volume2 className="size-3.5" />
-                <span>Re-play Chime</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowReminderModal(false)}
-                className="rounded-xl bg-[#223129] px-4 py-2 text-xs font-bold text-white hover:bg-[#15201a] transition"
-              >
-                Got It, Finishing Up
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -239,6 +239,58 @@ body {
   backdrop-filter: blur(18px);
 }
 
+.mise-prep-panel {
+  border-color: rgb(120 65 231 / 14%);
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 96%), rgb(250 246 255 / 92%));
+  box-shadow: 0 24px 70px rgb(62 37 104 / 10%);
+}
+
+.mise-deadline-select {
+  border-color: rgb(120 65 231 / 18%);
+  background: rgb(255 255 255 / 82%);
+  box-shadow: 0 8px 24px rgb(75 42 132 / 8%);
+  backdrop-filter: blur(14px);
+}
+
+.mise-deadline-select select {
+  color-scheme: light;
+  accent-color: var(--grape);
+}
+
+.mise-app img {
+  filter: saturate(1.06) contrast(1.02);
+}
+
+.mise-app .group img {
+  transform: scale(1.01);
+  transition: transform 500ms cubic-bezier(.2,.8,.2,1), filter 300ms ease;
+}
+
+.mise-app .group:hover img {
+  filter: saturate(1.14) contrast(1.04);
+  transform: scale(1.075);
+}
+
+.mise-app main {
+  width: 100%;
+}
+
+.mise-app main > div {
+  animation: mise-page-in 420ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes mise-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .mise-app main > div > div:not(.mise-hero),
 .mise-app main article {
   --tw-shadow-color: rgb(64 36 111 / 8%);
@@ -285,6 +337,15 @@ body {
 
   .mise-hero h1 {
     max-width: 10ch;
+  }
+
+  .mise-prep-panel {
+    border-radius: 1.35rem;
+    padding: 1rem;
+  }
+
+  .mise-nav span {
+    font-size: .56rem;
   }
 }
 
