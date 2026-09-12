@@ -217,10 +217,35 @@ body {
 
 .mise-hero-art {
   position: absolute;
+  inset: 0 0 0 auto;
+  width: 58%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 72% center;
+  filter: saturate(1.08) contrast(1.03);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 28%, #000 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 28%, #000 100%);
+}
+
+.mise-hero::before {
+  content: "";
+  position: absolute;
   inset: 0;
-  background-image: linear-gradient(90deg, rgb(248 239 255 / 98%) 0%, rgb(248 239 255 / 90%) 35%, transparent 65%), url('/gen-z-food-hero.png');
-  background-position: center, center;
-  background-size: cover;
+  z-index: 1;
+  background: linear-gradient(90deg, rgb(248 239 255 / 96%) 0%, rgb(248 239 255 / 72%) 43%, transparent 67%);
+  pointer-events: none;
+}
+
+.mise-chip {
+  border: 1px solid rgb(25 21 34 / 12%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 72%);
+  padding: .45rem .7rem;
+  color: #3b304a;
+  font-size: .68rem;
+  font-weight: 800;
+  box-shadow: 0 8px 22px rgb(75 42 132 / 8%);
+  backdrop-filter: blur(10px);
 }
 
 .mise-hero h1 {
@@ -252,6 +277,49 @@ body {
     radial-gradient(circle at 100% 0%, rgb(196 255 90 / 24%), transparent 18rem),
     linear-gradient(145deg, #fff, #faf5ff);
   box-shadow: 0 24px 70px rgb(62 37 104 / 11%);
+}
+
+.mise-scan-layout {
+  display: grid;
+  grid-template-columns: minmax(190px, .65fr) minmax(0, 1.35fr);
+  gap: 1.25rem;
+}
+
+.mise-scan-photo {
+  position: relative;
+  min-height: 240px;
+  overflow: hidden;
+  border-radius: 1.25rem;
+}
+
+.mise-scan-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mise-scan-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 48%, rgb(25 21 34 / 58%));
+}
+
+.mise-scan-photo span {
+  position: absolute;
+  left: .8rem;
+  bottom: .75rem;
+  z-index: 1;
+  border: 1px solid rgb(255 255 255 / 34%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 18%);
+  padding: .35rem .65rem;
+  color: white;
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
 }
 
 .mise-kitchen-scan label,
@@ -344,8 +412,12 @@ body {
   }
 
   .mise-hero-art {
-    background-image: linear-gradient(180deg, rgb(248 239 255 / 98%) 0%, rgb(248 239 255 / 88%) 46%, transparent 76%), url('/gen-z-food-hero.png');
-    background-position: center, 68% center;
+    inset: auto 0 0;
+    width: 100%;
+    height: 55%;
+    object-position: 68% center;
+    mask-image: linear-gradient(180deg, transparent 0%, #000 28%, #000 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 28%, #000 100%);
   }
 
   .mise-hero h1 {
@@ -355,6 +427,14 @@ body {
   .mise-prep-panel {
     border-radius: 1.35rem;
     padding: 1rem;
+  }
+
+  .mise-scan-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mise-scan-photo {
+    min-height: 190px;
   }
 
   .mise-nav span {

@@ -639,7 +639,12 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
           <div className="space-y-6">
             {/* Section 16 & 17: Context-Aware Greeting Banner */}
             <div className="mise-hero relative overflow-hidden rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-8 shadow-xs">
-              <div className="mise-hero-art" aria-hidden="true" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/gen-z-food-hero.png"
+                alt="A vibrant bowl of spicy noodles with fresh herbs and dumplings"
+                className="mise-hero-art"
+              />
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="relative z-10 max-w-lg">
                   <p className="text-xs font-bold uppercase tracking-widest text-[#b25537]">
@@ -651,6 +656,11 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                   <p className="mt-1 text-xs text-[#736e65]">
                     Smart picks for your cravings, pantry, and schedule—zero decision fatigue.
                   </p>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <span className="mise-chip">⚡ Fast picks</span>
+                    <span className="mise-chip">🥬 Pantry-aware</span>
+                    <span className="mise-chip">✨ AI guided</span>
+                  </div>
                 </div>
 
                 {/* Quick 1-Click Priority Action if Lunch/Dinner is Approaching */}
@@ -683,7 +693,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
               {/* Active Plan Priority Banner (if user already scheduled a meal for today) */}
               {activePlanToday && (
-                <div className="mt-4 rounded-2xl bg-[#223129] text-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+                <div className="relative z-10 mt-4 rounded-2xl bg-[#223129] text-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
                   <div className="flex items-center gap-3">
                     <span className="flex size-10 items-center justify-center rounded-xl bg-white/10 text-[#df9776]">
                       <Clock className="size-5" />
@@ -1070,6 +1080,13 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
             {/* Camera and multi-photo pantry scan */}
             <section className="mise-kitchen-scan overflow-hidden rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-6 shadow-xs">
+              <div className="mise-scan-layout">
+                <div className="mise-scan-photo">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/premium-pantry.png" alt="A well-stocked refrigerator and pantry ready to scan" />
+                  <span>AI pantry vision</span>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col justify-center">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <span className="flex size-11 items-center justify-center rounded-2xl bg-[#7841e7] text-white shadow-md">
@@ -1154,6 +1171,8 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                   ))}
                 </div>
               )}
+                </div>
+              </div>
             </section>
 
             {/* AI "What Can I Cook?" Suggestions Result */}
