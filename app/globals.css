@@ -192,17 +192,19 @@ body {
 }
 
 .mise-hero {
-  min-height: 23rem;
-  border-color: rgb(120 65 231 / 18%);
-  background: linear-gradient(110deg, #f8efff 0%, #fff9ef 52%, #f6efff 100%);
-  box-shadow: 0 22px 65px rgb(75 42 132 / 14%);
+  min-height: 36rem;
+  border-color: rgb(255 255 255 / 60%);
+  background: #20142f;
+  box-shadow: 0 30px 90px rgb(67 36 116 / 24%);
 }
 
 .mise-hero::after {
   content: "HOT & FRESH";
   position: absolute;
-  left: 1.5rem;
-  bottom: 1.3rem;
+  right: 1.5rem;
+  left: auto;
+  top: 1.4rem;
+  bottom: auto;
   z-index: 2;
   border: 2px solid var(--ink);
   border-radius: 999px;
@@ -212,19 +214,19 @@ body {
   font-size: .62rem;
   font-weight: 900;
   letter-spacing: .14em;
-  transform: rotate(-4deg);
+  transform: rotate(4deg);
 }
 
 .mise-hero-art {
   position: absolute;
   inset: 0 0 0 auto;
-  width: 58%;
+  width: 64%;
   height: 100%;
   object-fit: cover;
-  object-position: 72% center;
+  object-position: 68% center;
   filter: saturate(1.08) contrast(1.03);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 28%, #000 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 28%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 24%, #000 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 24%, #000 100%);
 }
 
 .mise-hero::before {
@@ -232,7 +234,7 @@ body {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(90deg, rgb(248 239 255 / 96%) 0%, rgb(248 239 255 / 72%) 43%, transparent 67%);
+  background: linear-gradient(90deg, #f5e9ff 0%, rgb(245 233 255 / 92%) 39%, rgb(32 20 47 / 8%) 68%), linear-gradient(0deg, rgb(32 20 47 / 35%), transparent 45%);
   pointer-events: none;
 }
 
@@ -252,10 +254,90 @@ body {
   max-width: 13ch;
   color: var(--ink);
   font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
-  font-size: clamp(2.35rem, 6vw, 4.65rem);
-  line-height: .91;
+  font-size: clamp(3rem, 7vw, 5.8rem);
+  line-height: .84;
   letter-spacing: -.065em;
 }
+
+.mise-hero h1 em {
+  color: var(--grape);
+  font-family: Georgia, serif;
+  font-weight: 500;
+}
+
+.mise-flavor-ticker {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 1rem;
+  overflow: hidden;
+  border: 1px solid rgb(25 21 34 / 12%);
+  border-radius: 999px;
+  background: var(--lime);
+  padding: .8rem 1.1rem;
+  color: var(--ink);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 5px 6px 0 var(--ink);
+  transform: rotate(-.5deg);
+}
+
+.mise-flavor-ticker b { color: var(--grape); }
+
+.mise-meal-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: 18rem;
+  gap: 1rem;
+}
+
+.mise-meal-card {
+  position: relative;
+  grid-column: span 6;
+  overflow: hidden;
+  border: 1px solid rgb(25 21 34 / 10%);
+  border-radius: 1.75rem;
+  background: white;
+  padding: 1rem;
+  box-shadow: 0 18px 55px rgb(69 40 115 / 10%);
+  transition: transform 350ms cubic-bezier(.2,.8,.2,1), box-shadow 350ms ease;
+}
+
+.mise-meal-card-1,
+.mise-meal-card-4 { grid-column: span 7; }
+.mise-meal-card-2,
+.mise-meal-card-3 { grid-column: span 5; }
+.mise-meal-card-1,
+.mise-meal-card-2 { grid-row: span 2; }
+
+.mise-meal-card:hover {
+  transform: translateY(-7px) rotate(.35deg);
+  box-shadow: 0 28px 70px rgb(69 40 115 / 18%);
+}
+
+.mise-meal-photo {
+  height: 12rem;
+  margin: .65rem 0 .9rem;
+  overflow: hidden;
+  border-radius: 1.2rem;
+  background: #eee8df;
+}
+
+.mise-meal-card-1 .mise-meal-photo,
+.mise-meal-card-2 .mise-meal-photo { height: 22rem; }
+
+.mise-meal-title {
+  color: var(--ink);
+  font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: -.03em;
+}
+
+.mise-meal-meta { margin-bottom: .25rem; }
 
 .mise-ready-card {
   border-color: rgb(255 255 255 / 70%);
@@ -407,9 +489,15 @@ body {
 
 @media (max-width: 639px) {
   .mise-hero {
-    min-height: 32rem;
+    min-height: 38rem;
     padding-bottom: 5rem;
   }
+
+  .mise-flavor-ticker { justify-content: flex-start; }
+
+  .mise-meal-grid { display: flex; flex-direction: column; }
+  .mise-meal-card { min-height: 27rem; }
+  .mise-meal-card .mise-meal-photo { height: 16rem; }
 
   .mise-hero-art {
     inset: auto 0 0;

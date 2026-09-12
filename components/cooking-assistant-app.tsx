@@ -638,23 +638,23 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
         {activeTab === 'home' && (
           <div className="space-y-6">
             {/* Section 16 & 17: Context-Aware Greeting Banner */}
-            <div className="mise-hero relative overflow-hidden rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-8 shadow-xs">
+            <section className="mise-hero relative overflow-hidden rounded-[2rem] border p-5 sm:p-8">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/gen-z-food-hero.jpg"
                 alt="A vibrant bowl of spicy noodles with fresh herbs and dumplings"
                 className="mise-hero-art"
               />
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="relative z-10 max-w-lg">
+              <div className="relative z-10 flex min-h-[30rem] flex-col justify-between sm:min-h-[32rem]">
+                <div className="max-w-xl">
                   <p className="text-xs font-bold uppercase tracking-widest text-[#b25537]">
-                    {greeting}, {userName} 👋
+                    {greeting}, {userName} <span aria-hidden="true">✦</span>
                   </p>
-                  <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#223129]">
-                    Let&apos;s make something that slaps.
+                  <h1 className="mt-3 font-bold tracking-tight">
+                    Crave it.<br />Cook it.<br /><em>Own it.</em>
                   </h1>
-                  <p className="mt-1 text-xs text-[#736e65]">
-                    Smart picks for your cravings, pantry, and schedule—zero decision fatigue.
+                  <p className="mt-4 max-w-sm text-sm font-medium text-[#554b60]">
+                    Your next delicious move, picked from what you love and what is already in your kitchen.
                   </p>
                   <div className="mt-5 flex flex-wrap gap-2">
                     <span className="mise-chip">⚡ Fast picks</span>
@@ -665,7 +665,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
                 {/* Quick 1-Click Priority Action if Lunch/Dinner is Approaching */}
                 {priorityMeal.item && (
-                  <div className="mise-ready-card relative z-10 rounded-2xl border border-[#faede6] bg-[#fdf8f5] p-3.5 flex items-center justify-between gap-4 sm:min-w-[260px]">
+                  <div className="mise-ready-card self-end rounded-2xl border p-3.5 flex items-center justify-between gap-4 sm:min-w-[280px]">
                     <div>
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#b25537]">
                         <priorityMeal.icon className="size-3 text-[#b25537]" />
@@ -731,16 +731,20 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                   </div>
                 </div>
               )}
+            </section>
+
+            <div className="mise-flavor-ticker" aria-label="Food inspiration">
+              <span>comfort bowls</span><b>✦</b><span>crispy bites</span><b>✦</b><span>desi classics</span><b>✦</b><span>weeknight wins</span><b>✦</b><span>made for you</span>
             </div>
 
             {/* Section 16: Four Core Daily Slot Cards */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-serif text-lg font-bold text-[#223129]">Today&apos;s Meal Recommendations</h2>
-                <span className="text-xs text-[#736e65]">1-Click Smart Cook</span>
+                <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#7841e7]">Today&apos;s edit</p><h2 className="text-2xl font-black tracking-tight text-[#191522]">Four moods. One hungry you.</h2></div>
+                <span className="rounded-full bg-[#191522] px-3 py-1.5 text-[10px] font-bold text-white">tap → cook</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="mise-meal-grid">
                 {[
                   {
                     slot: 'BREAKFAST',
@@ -766,16 +770,16 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                     item: dinnerSlot,
                     badgeColor: 'text-[#4338ca] bg-[#e0e7ff]',
                   },
-                ].map(({ slot, icon: SlotIcon, item, badgeColor }) => {
+                ].map(({ slot, icon: SlotIcon, item, badgeColor }, index) => {
                   if (!item) return null
                   return (
                     <div
                       key={slot}
-                      className="flex flex-col justify-between rounded-2xl border border-[#ded9cf] bg-white p-4 shadow-xs hover:border-[#b25537]/50 transition group"
+                      className={`mise-meal-card mise-meal-card-${index + 1} group`}
                     >
                       <div>
                         {/* Slot Header */}
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="mise-meal-meta flex items-center justify-between">
                           <span
                             className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeColor}`}
                           >
@@ -789,7 +793,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
                         {/* Image Thumbnail */}
                         {(
-                          <div className="relative mb-3 h-28 w-full overflow-hidden rounded-xl bg-[#f0ece3]">
+                          <div className="mise-meal-photo">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={item.image_url || '/gen-z-food-hero.jpg'}
@@ -805,22 +809,22 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                         )}
 
                         {/* Title */}
-                        <h3 className="font-serif text-sm font-bold text-[#223129] line-clamp-1">
+                        <h3 className="mise-meal-title line-clamp-1">
                           {item.name}
                         </h3>
-                        <p className="mt-1 text-[11px] text-[#736e65] line-clamp-2">
+                        <p className="mt-1 text-xs text-[#736e65] line-clamp-2">
                           {item.description || 'Nutritious homestyle recipe with fresh ingredients.'}
                         </p>
                       </div>
 
                       {/* Cook Button */}
-                      <div className="mt-4 pt-3 border-t border-[#f0ece3] flex items-center gap-2">
+                      <div className="mt-4 flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => setSelectedRecipeForPlan(item)}
                           className="flex-1 rounded-xl bg-[#223129] py-2 text-center text-xs font-bold text-white hover:bg-[#b25537] transition shadow-xs"
                         >
-                          [ Cook ]
+                          Cook this
                         </button>
                         <button
                           type="button"
@@ -837,23 +841,6 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
               </div>
             </div>
 
-            {/* Tomorrow's Plan, Night Prep & Required Items Checklist with Midnight Reminder (Replaced Child 3) */}
-            <TomorrowPlanNightPrep
-              recipes={recipes}
-              mealPlans={mealPlans}
-              inventory={inventory}
-              onRefreshPlans={loadMealPlans}
-              onAddInventoryItem={(name, qty, unit) => {
-                fetch('/api/kitchen/inventory', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ ingredient_name: name, quantity: qty, unit }),
-                }).then(() => loadInventory())
-              }}
-              onRemoveInventoryItem={handleDeleteInventory}
-              onStartCooking={(rec) => handleStartCooking(rec)}
-              onSelectRecipeForPlan={(rec) => setSelectedRecipeForPlan(rec)}
-            />
           </div>
         )}
 
@@ -898,6 +885,23 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                 <span>Generated a balanced 7-day meal plan across Breakfast, Lunch, High Tea, and Dinner!</span>
               </div>
             )}
+
+            <TomorrowPlanNightPrep
+              recipes={recipes}
+              mealPlans={mealPlans}
+              inventory={inventory}
+              onRefreshPlans={loadMealPlans}
+              onAddInventoryItem={(name, qty, unit) => {
+                fetch('/api/kitchen/inventory', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ ingredient_name: name, quantity: qty, unit }),
+                }).then(() => loadInventory())
+              }}
+              onRemoveInventoryItem={handleDeleteInventory}
+              onStartCooking={(rec) => handleStartCooking(rec)}
+              onSelectRecipeForPlan={(rec) => setSelectedRecipeForPlan(rec)}
+            />
 
             {/* List of Scheduled Meals & Preparation Tasks */}
             {mealPlans.length === 0 ? (
