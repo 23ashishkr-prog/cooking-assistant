@@ -512,12 +512,12 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   }
 
   return (
-    <div className="min-h-screen bg-[#fbf9f5] text-[#223129] pb-24 font-sans">
+    <div className="mise-app min-h-screen bg-[#fbf9f5] text-[#223129] pb-24 font-sans">
       {/* 1. Header with App Title & Realtime Context */}
-      <header className="sticky top-0 z-30 border-b border-[#ded9cf] bg-[#fbf9f5]/90 backdrop-blur-md">
+      <header className="mise-header sticky top-0 z-30 border-b border-[#ded9cf] bg-[#fbf9f5]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-2xl bg-[#223129] text-[#f8f6f1] shadow-sm">
+            <span className="mise-logo flex size-10 items-center justify-center rounded-2xl bg-[#223129] text-[#f8f6f1] shadow-sm">
               <ChefHat className="size-5 text-[#df9776]" />
             </span>
             <div>
@@ -527,7 +527,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                   Personal Chef
                 </span>
               </div>
-              <p className="text-[11px] text-[#736e65]">Supabase-backed Cooking Assistant</p>
+              <p className="text-[11px] text-[#736e65]">Your kitchen, but smarter ✦</p>
             </div>
           </div>
 
@@ -551,23 +551,24 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
         {activeTab === 'home' && (
           <div className="space-y-6">
             {/* Section 16 & 17: Context-Aware Greeting Banner */}
-            <div className="rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs">
+            <div className="mise-hero relative overflow-hidden rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-8 shadow-xs">
+              <div className="mise-hero-art" aria-hidden="true" />
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
+                <div className="relative z-10 max-w-lg">
                   <p className="text-xs font-bold uppercase tracking-widest text-[#b25537]">
                     {greeting}, {userName} 👋
                   </p>
                   <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#223129]">
-                    What are you cooking today?
+                    Let&apos;s make something that slaps.
                   </h1>
                   <p className="mt-1 text-xs text-[#736e65]">
-                    Personalized according to your diet, pantry ingredients, and time of day.
+                    Smart picks for your cravings, pantry, and schedule—zero decision fatigue.
                   </p>
                 </div>
 
                 {/* Quick 1-Click Priority Action if Lunch/Dinner is Approaching */}
                 {priorityMeal.item && (
-                  <div className="rounded-2xl border border-[#faede6] bg-[#fdf8f5] p-3.5 flex items-center justify-between gap-4 sm:min-w-[260px]">
+                  <div className="mise-ready-card relative z-10 rounded-2xl border border-[#faede6] bg-[#fdf8f5] p-3.5 flex items-center justify-between gap-4 sm:min-w-[260px]">
                     <div>
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#b25537]">
                         <priorityMeal.icon className="size-3 text-[#b25537]" />
@@ -690,14 +691,18 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                         </div>
 
                         {/* Image Thumbnail */}
-                        {item.image_url && (
+                        {(
                           <div className="relative mb-3 h-28 w-full overflow-hidden rounded-xl bg-[#f0ece3]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={item.image_url}
+                              src={item.image_url || '/gen-z-food-hero.png'}
                               alt={item.name}
                               className="size-full object-cover group-hover:scale-105 transition duration-300"
                               loading="lazy"
+                              onError={(event) => {
+                                event.currentTarget.onerror = null
+                                event.currentTarget.src = '/gen-z-food-hero.png'
+                              }}
                             />
                           </div>
                         )}
@@ -1426,7 +1431,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       {/* ===================== BOTTOM NAVIGATION (Section 33) ===================== */}
       <nav
         aria-label="Bottom Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#ded9cf] bg-[#fbf9f5]/95 backdrop-blur-md"
+        className="mise-nav fixed bottom-0 left-0 right-0 z-40 border-t border-[#ded9cf] bg-[#fbf9f5]/95 backdrop-blur-md"
       >
         <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
           {[

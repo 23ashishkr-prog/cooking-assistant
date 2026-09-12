@@ -161,3 +161,138 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mise: high-energy, tactile Gen Z interface layer */
+body {
+  background:
+    radial-gradient(circle at 10% 5%, rgb(196 255 90 / 18%), transparent 24rem),
+    radial-gradient(circle at 90% 18%, rgb(161 98 247 / 16%), transparent 28rem),
+    #f8f5ee;
+}
+
+.mise-app {
+  --ink: #191522;
+  --grape: #7841e7;
+  --lime: #c4ff5a;
+  --coral: #ff654f;
+  background: transparent;
+  color: var(--ink);
+}
+
+.mise-header {
+  border-color: rgb(25 21 34 / 10%);
+  background: rgb(248 245 238 / 82%);
+  box-shadow: 0 8px 32px rgb(68 44 112 / 7%);
+}
+
+.mise-logo {
+  background: var(--grape);
+  box-shadow: 4px 4px 0 var(--lime);
+  transform: rotate(-3deg);
+}
+
+.mise-hero {
+  min-height: 23rem;
+  border-color: rgb(120 65 231 / 18%);
+  background: linear-gradient(110deg, #f8efff 0%, #fff9ef 52%, #f6efff 100%);
+  box-shadow: 0 22px 65px rgb(75 42 132 / 14%);
+}
+
+.mise-hero::after {
+  content: "HOT & FRESH";
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.3rem;
+  z-index: 2;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--lime);
+  padding: .45rem .8rem;
+  color: var(--ink);
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  transform: rotate(-4deg);
+}
+
+.mise-hero-art {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(90deg, rgb(248 239 255 / 98%) 0%, rgb(248 239 255 / 90%) 35%, transparent 65%), url('/gen-z-food-hero.png');
+  background-position: center, center;
+  background-size: cover;
+}
+
+.mise-hero h1 {
+  max-width: 13ch;
+  color: var(--ink);
+  font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+  font-size: clamp(2.35rem, 6vw, 4.65rem);
+  line-height: .91;
+  letter-spacing: -.065em;
+}
+
+.mise-ready-card {
+  border-color: rgb(255 255 255 / 70%);
+  background: rgb(255 255 255 / 78%);
+  box-shadow: 0 14px 38px rgb(55 31 98 / 16%);
+  backdrop-filter: blur(18px);
+}
+
+.mise-app main > div > div:not(.mise-hero),
+.mise-app main article {
+  --tw-shadow-color: rgb(64 36 111 / 8%);
+}
+
+.mise-app button {
+  transition: transform 180ms ease, box-shadow 180ms ease, color 180ms ease, background-color 180ms ease;
+}
+
+.mise-app button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.mise-app button:focus-visible,
+.mise-app input:focus-visible,
+.mise-app select:focus-visible,
+.mise-app textarea:focus-visible {
+  outline: 3px solid rgb(196 255 90 / 90%);
+  outline-offset: 3px;
+}
+
+.mise-nav {
+  left: 50%;
+  right: auto;
+  bottom: .9rem;
+  width: min(calc(100% - 1.5rem), 31rem);
+  transform: translateX(-50%);
+  border: 1px solid rgb(25 21 34 / 12%);
+  border-radius: 1.4rem;
+  background: rgb(255 255 255 / 86%);
+  box-shadow: 0 16px 55px rgb(38 20 70 / 20%);
+}
+
+@media (max-width: 639px) {
+  .mise-hero {
+    min-height: 32rem;
+    padding-bottom: 5rem;
+  }
+
+  .mise-hero-art {
+    background-image: linear-gradient(180deg, rgb(248 239 255 / 98%) 0%, rgb(248 239 255 / 88%) 46%, transparent 76%), url('/gen-z-food-hero.png');
+    background-position: center, 68% center;
+  }
+
+  .mise-hero h1 {
+    max-width: 10ch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mise-app *, .mise-app *::before, .mise-app *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
