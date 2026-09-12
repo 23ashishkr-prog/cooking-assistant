@@ -246,6 +246,19 @@ body {
   box-shadow: 0 24px 70px rgb(62 37 104 / 10%);
 }
 
+.mise-kitchen-scan {
+  border-color: rgb(120 65 231 / 18%);
+  background:
+    radial-gradient(circle at 100% 0%, rgb(196 255 90 / 24%), transparent 18rem),
+    linear-gradient(145deg, #fff, #faf5ff);
+  box-shadow: 0 24px 70px rgb(62 37 104 / 11%);
+}
+
+.mise-kitchen-scan label,
+.mise-kitchen-scan button {
+  -webkit-tap-highlight-color: transparent;
+}
+
 .mise-deadline-select {
   border-color: rgb(120 65 231 / 18%);
   background: rgb(255 255 255 / 82%);

@@ -50,6 +50,7 @@ interface TomorrowPlanNightPrepProps {
   inventory: InventoryItem[]
   onRefreshPlans?: () => void
   onAddInventoryItem?: (name: string, qty: number, unit: string) => void
+  onRemoveInventoryItem?: (id: string) => void
   onStartCooking?: (recipe: RecipeItem) => void
   onSelectRecipeForPlan?: (recipe: RecipeItem) => void
 }
@@ -60,6 +61,7 @@ export function TomorrowPlanNightPrep({
   inventory,
   onRefreshPlans,
   onAddInventoryItem,
+  onRemoveInventoryItem,
   onStartCooking,
   onSelectRecipeForPlan,
 }: TomorrowPlanNightPrepProps) {
@@ -244,22 +246,17 @@ export function TomorrowPlanNightPrep({
     }
   }, [itemsChecklist])
 
-  // Update inPantry flags based on user's actual inventory
+  // Sync availability to the actual inventory. This intentionally supports rollback.
   useEffect(() => {
-    if (inventory.length > 0) {
-      setItemsChecklist((prev) =>
-        prev.map((item) => {
-          const matchingInv = inventory.find((inv) =>
-            item.name.toLowerCase().includes(inv.ingredient_name.toLowerCase()) ||
-            inv.ingredient_name.toLowerCase().includes(item.name.toLowerCase())
-          )
-          return {
-            ...item,
-            inPantry: !!matchingInv || item.inPantry,
-          }
-        })
-      )
-    }
+    setItemsChecklist((prev) =>
+      prev.map((item) => {
+        const matchingInv = inventory.find((inv) =>
+          item.name.toLowerCase().includes(inv.ingredient_name.toLowerCase()) ||
+          inv.ingredient_name.toLowerCase().includes(item.name.toLowerCase())
+        )
+        return { ...item, inPantry: !!matchingInv }
+      })
+    )
   }, [inventory])
 
   // New item input state
@@ -461,6 +458,21 @@ export function TomorrowPlanNightPrep({
     )
     if (onAddInventoryItem) {
       onAddInventoryItem(item.name, 1, 'portion')
+    }
+  }
+
+  const handleMarkItemMissing = (item: TomorrowIngredient) => {
+    setItemsChecklist((prev) =>
+      prev.map((entry) => (entry.id === item.id ? { ...entry, inPantry: false, checked: false } : entry))
+    )
+
+    const matchingInventory = inventory.find((inventoryItem) =>
+      item.name.toLowerCase().includes(inventoryItem.ingredient_name.toLowerCase()) ||
+      inventoryItem.ingredient_name.toLowerCase().includes(item.name.toLowerCase())
+    )
+
+    if (matchingInventory) {
+      onRemoveInventoryItem?.(matchingInventory.id)
     }
   }
 
@@ -978,9 +990,14 @@ export function TomorrowPlanNightPrep({
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   {item.inPantry ? (
-                    <span className="rounded-md bg-[#eef6f0] px-2 py-0.5 text-[10px] font-semibold text-[#245e38]">
-                      In Kitchen ✓
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleMarkItemMissing(item)}
+                      className="rounded-md bg-[#eef6f0] px-2 py-0.5 text-[10px] font-semibold text-[#245e38] hover:bg-[#fee2e2] hover:text-[#991b1b]"
+                      title="Mark as missing"
+                    >
+                      In Kitchen ✓ · Undo
+                    </button>
                   ) : (
                     <button
                       type="button"
@@ -1076,14 +1093,18 @@ export function TomorrowPlanNightPrep({
                     </div>
 
                     {/* Image */}
-                    {recipe.image_url && (
+                    {(
                       <div className="relative mb-2.5 h-24 w-full overflow-hidden rounded-xl bg-[#f0ece3]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={recipe.image_url}
+                          src={recipe.image_url || '/gen-z-food-hero.png'}
                           alt={recipe.name}
                           className="size-full object-cover group-hover:scale-105 transition duration-300"
                           loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.onerror = null
+                            event.currentTarget.src = '/gen-z-food-hero.png'
+                          }}
                         />
                       </div>
                     )}

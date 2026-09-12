@@ -316,6 +316,10 @@ export function MealPlanner({ initialRecipes }: { initialRecipes: Recipe[] }) {
                             src={recipe.image_url}
                             alt={recipe.title}
                             className="size-full object-cover transition duration-300 group-hover:scale-105"
+                            onError={(event) => {
+                              event.currentTarget.onerror = null
+                              event.currentTarget.src = '/gen-z-food-hero.png'
+                            }}
                           />
                         ) : (
                           <Utensils className="size-6 text-[#df9776]" />
@@ -419,11 +423,15 @@ export function MealPlanner({ initialRecipes }: { initialRecipes: Recipe[] }) {
                     </div>
                   </div>
 
-                  {selectedRecipe.image_url && (
+                  {(
                     <img
-                      src={selectedRecipe.image_url}
+                      src={selectedRecipe.image_url || '/gen-z-food-hero.png'}
                       alt={selectedRecipe.title}
                       className="size-20 shrink-0 rounded-2xl object-cover shadow-md"
+                      onError={(event) => {
+                        event.currentTarget.onerror = null
+                        event.currentTarget.src = '/gen-z-food-hero.png'
+                      }}
                     />
                   )}
                 </div>

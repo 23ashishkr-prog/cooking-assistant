@@ -30,6 +30,9 @@ import {
   CalendarDays,
   ShoppingBag,
   SlidersHorizontal,
+  Camera,
+  Images,
+  ScanLine,
 } from 'lucide-react'
 import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
@@ -153,6 +156,10 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   const [newIngredientName, setNewIngredientName] = useState('')
   const [newIngredientQty, setNewIngredientQty] = useState('1')
   const [newIngredientUnit, setNewIngredientUnit] = useState('pieces')
+  const [kitchenPhotos, setKitchenPhotos] = useState<Array<{ name: string; data: string; mimeType: string }>>([])
+  const [scanningKitchen, setScanningKitchen] = useState(false)
+  const [kitchenScanStatus, setKitchenScanStatus] = useState<string | null>(null)
+  const [detectedKitchenItems, setDetectedKitchenItems] = useState<any[]>([])
 
   // Favorites & Feedback State
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([])
@@ -457,6 +464,86 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     }
   }
 
+  const prepareKitchenPhoto = (file: File) =>
+    new Promise<{ name: string; data: string; mimeType: string }>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onerror = () => reject(new Error(`Could not read ${file.name}`))
+      reader.onload = () => {
+        const image = new Image()
+        image.onerror = () => reject(new Error(`Could not process ${file.name}`))
+        image.onload = () => {
+          const maxEdge = 1280
+          const scale = Math.min(1, maxEdge / Math.max(image.width, image.height))
+          const canvas = document.createElement('canvas')
+          canvas.width = Math.max(1, Math.round(image.width * scale))
+          canvas.height = Math.max(1, Math.round(image.height * scale))
+          canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height)
+          resolve({
+            name: file.name,
+            data: canvas.toDataURL('image/jpeg', 0.76),
+            mimeType: 'image/jpeg',
+          })
+        }
+        image.src = String(reader.result)
+      }
+      reader.readAsDataURL(file)
+    })
+
+  const handleKitchenPhotos = async (files: FileList | null) => {
+    if (!files?.length) return
+    setKitchenScanStatus(null)
+    try {
+      const remaining = Math.max(0, 8 - kitchenPhotos.length)
+      const selected = Array.from(files).slice(0, remaining)
+      const prepared = await Promise.all(selected.map(prepareKitchenPhoto))
+      setKitchenPhotos((current) => [...current, ...prepared].slice(0, 8))
+    } catch (error: any) {
+      setKitchenScanStatus(error?.message || 'Could not prepare those photos.')
+    }
+  }
+
+  const handleScanKitchen = async () => {
+    if (kitchenPhotos.length === 0) return
+    setScanningKitchen(true)
+    setKitchenScanStatus('Scanning your kitchen…')
+    try {
+      const response = await fetch('/api/kitchen/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: kitchenPhotos.map(({ data, mimeType }) => ({ data, mimeType })) }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Kitchen scan failed.')
+
+      const detected = Array.isArray(result.items) ? result.items : []
+      const existingNames = new Set(inventory.map((item) => item.ingredient_name.trim().toLowerCase()))
+      const newItems = detected.filter((item: any) => !existingNames.has(String(item.name).trim().toLowerCase()))
+
+      await Promise.all(
+        newItems.map((item: any) =>
+          fetch('/api/kitchen/inventory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ingredient_name: item.name,
+              quantity: item.quantity || 1,
+              unit: item.unit || 'item',
+            }),
+          })
+        )
+      )
+
+      setDetectedKitchenItems(detected)
+      setKitchenScanStatus(`Found ${detected.length} items · added ${newItems.length} new`)
+      setKitchenPhotos([])
+      await loadInventory()
+    } catch (error: any) {
+      setKitchenScanStatus(error?.message || 'Kitchen scan failed. Try clearer photos.')
+    } finally {
+      setScanningKitchen(false)
+    }
+  }
+
   // Admin Save Recipe
   const handleAdminSaveRecipe = async () => {
     if (!adminName.trim()) return
@@ -753,6 +840,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                   body: JSON.stringify({ ingredient_name: name, quantity: qty, unit }),
                 }).then(() => loadInventory())
               }}
+              onRemoveInventoryItem={handleDeleteInventory}
               onStartCooking={(rec) => handleStartCooking(rec)}
               onSelectRecipeForPlan={(rec) => setSelectedRecipeForPlan(rec)}
             />
@@ -980,6 +1068,94 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
               </button>
             </div>
 
+            {/* Camera and multi-photo pantry scan */}
+            <section className="mise-kitchen-scan overflow-hidden rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-6 shadow-xs">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-11 items-center justify-center rounded-2xl bg-[#7841e7] text-white shadow-md">
+                    <ScanLine className="size-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-extrabold text-[#223129]">Scan your kitchen</h2>
+                    <p className="text-xs text-[#736e65]">Snap shelves or upload up to 8 photos.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <label className="cursor-pointer rounded-xl border border-[#ded9cf] bg-white px-3.5 py-2 text-xs font-bold text-[#223129] hover:border-[#7841e7] hover:text-[#7841e7]">
+                    <span className="flex items-center gap-1.5"><Camera className="size-4" /> Take photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="sr-only"
+                      onChange={(event) => {
+                        handleKitchenPhotos(event.target.files)
+                        event.currentTarget.value = ''
+                      }}
+                    />
+                  </label>
+                  <label className="cursor-pointer rounded-xl border border-[#ded9cf] bg-white px-3.5 py-2 text-xs font-bold text-[#223129] hover:border-[#7841e7] hover:text-[#7841e7]">
+                    <span className="flex items-center gap-1.5"><Images className="size-4" /> Add photos</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      onChange={(event) => {
+                        handleKitchenPhotos(event.target.files)
+                        event.currentTarget.value = ''
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {kitchenPhotos.length > 0 && (
+                <div className="mt-4">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-8">
+                    {kitchenPhotos.map((photo, index) => (
+                      <div key={`${photo.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl bg-[#eee8f8]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photo.data} alt={`Kitchen photo ${index + 1}`} className="size-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setKitchenPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                          className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/65 text-white"
+                          aria-label={`Remove kitchen photo ${index + 1}`}
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleScanKitchen}
+                    disabled={scanningKitchen}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7841e7] px-4 py-3 text-xs font-extrabold text-white shadow-md hover:bg-[#6330cc] disabled:opacity-60"
+                  >
+                    {scanningKitchen ? <LoaderCircle className="size-4 animate-spin" /> : <ScanLine className="size-4" />}
+                    {scanningKitchen ? 'Identifying items…' : `Scan ${kitchenPhotos.length} photo${kitchenPhotos.length > 1 ? 's' : ''}`}
+                  </button>
+                </div>
+              )}
+
+              {kitchenScanStatus && (
+                <p className="mt-3 text-xs font-bold text-[#6330cc]" role="status">{kitchenScanStatus}</p>
+              )}
+
+              {detectedKitchenItems.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {detectedKitchenItems.map((item, index) => (
+                    <span key={`${item.name}-${index}`} className="rounded-full bg-[#efffd4] px-2.5 py-1 text-[10px] font-bold text-[#314b08]">
+                      {item.name} ✓
+                    </span>
+                  ))}
+                </div>
+              )}
+            </section>
+
             {/* AI "What Can I Cook?" Suggestions Result */}
             {whatCanICookSuggestions && (
               <div className="rounded-3xl border border-[#faede6] bg-[#fdfaf7] p-5 sm:p-6 shadow-xs space-y-4">
@@ -1154,14 +1330,18 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                       className="rounded-2xl border border-[#ded9cf] bg-white p-4 shadow-xs flex flex-col justify-between"
                     >
                       <div>
-                        {rec.image_url && (
+                        {(
                           <div className="relative mb-2 h-24 w-full overflow-hidden rounded-xl bg-[#e8e4db]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={rec.image_url}
+                              src={rec.image_url || '/gen-z-food-hero.png'}
                               alt={rec.name}
                               className="size-full object-cover"
                               loading="lazy"
+                              onError={(event) => {
+                                event.currentTarget.onerror = null
+                                event.currentTarget.src = '/gen-z-food-hero.png'
+                              }}
                             />
                           </div>
                         )}
