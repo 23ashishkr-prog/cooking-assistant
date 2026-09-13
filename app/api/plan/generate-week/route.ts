@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { GoogleGenAI } from '@google/genai'
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,8 +26,11 @@ export async function POST(req: NextRequest) {
     }))
 
     const baseDate = startDate ? new Date(startDate) : new Date()
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     const createdPlans = []
+
+    if (recipePool.length === 0) {
+      return NextResponse.json({ error: 'Add at least one recipe before generating a week.' }, { status: 400 })
+    }
 
     // Generate 7 days of plans
     for (let i = 0; i < 7; i++) {
@@ -37,23 +39,25 @@ export async function POST(req: NextRequest) {
       const dateStr = planDate.toISOString().split('T')[0]
 
       const slots = [
-        { type: 'breakfast', time: '08:30', defaultRecipe: 'rec-masala-dosa' },
-        { type: 'lunch', time: '13:00', defaultRecipe: 'rec-dal-tadka-rice' },
-        { type: 'high_tea', time: '17:00', defaultRecipe: 'rec-veg-grilled-sandwich' },
-        { type: 'dinner', time: '20:30', defaultRecipe: 'rec-paneer-butter-masala' },
+        { type: 'breakfast', time: '08:30' },
+        { type: 'lunch', time: '13:00' },
+        { type: 'high_tea', time: '17:00' },
+        { type: 'dinner', time: '20:30' },
       ]
 
       for (const slot of slots) {
         // Pick recipe matching meal_type or default
         const matches = recipePool.filter(r => r.meal_type === slot.type)
-        const chosen = matches.length > 0 ? matches[i % matches.length] : null
-        const recipeId = chosen ? chosen.id : slot.defaultRecipe
+        // Always use a real database recipe ID so foreign-key inserts cannot fail.
+        const chosen = matches.length > 0
+          ? matches[i % matches.length]
+          : recipePool[(i * slots.length + slots.indexOf(slot)) % recipePool.length]
 
-        const { data: newPlan } = await supabase
+        const { data: newPlan, error: planError } = await supabase
           .from('meal_plans')
           .insert({
             user_id: userId,
-            recipe_id: recipeId,
+            recipe_id: chosen.id,
             meal_type: slot.type,
             planned_date: dateStr,
             planned_time: slot.time,
@@ -63,6 +67,13 @@ export async function POST(req: NextRequest) {
           .select()
           .single()
 
+        if (planError) {
+          console.error('[Generate Week Insert Error]:', planError)
+          return NextResponse.json({
+            error: planError.message || `Could not create ${slot.type} for ${dateStr}`,
+            totalMealsCreated: createdPlans.length,
+          }, { status: 500 })
+        }
         if (newPlan) createdPlans.push(newPlan)
       }
     }

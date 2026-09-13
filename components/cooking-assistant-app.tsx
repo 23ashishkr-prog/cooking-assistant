@@ -147,6 +147,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   const [loadingPlans, setLoadingPlans] = useState(false)
   const [isGeneratingWeek, setIsGeneratingWeek] = useState(false)
   const [weekGeneratedNotice, setWeekGeneratedNotice] = useState(false)
+  const [weekGenerateError, setWeekGenerateError] = useState<string | null>(null)
 
   // Kitchen Inventory State
   const [inventory, setInventory] = useState<InventoryItem[]>([])
@@ -206,6 +207,23 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       }
     }
     fetchRecommendations()
+  }, [])
+
+  // Keep the hero recommendation aligned to the user's current local time.
+  useEffect(() => {
+    const updateCurrentMeal = () => {
+      const hour = new Date().getHours()
+      const slot = hour >= 5 && hour < 11 ? 'breakfast'
+        : hour >= 11 && hour < 15 ? 'lunch'
+        : hour >= 15 && hour < 19 ? 'high_tea'
+        : 'dinner'
+      const nextGreeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening'
+      setContextualSlot(slot)
+      setGreeting(nextGreeting)
+    }
+    updateCurrentMeal()
+    const timer = window.setInterval(updateCurrentMeal, 60_000)
+    return () => window.clearInterval(timer)
   }, [])
 
   // Fetch meal plans
@@ -397,6 +415,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   // Generate My Week
   const handleGenerateWeek = async () => {
     setIsGeneratingWeek(true)
+    setWeekGenerateError(null)
     try {
       const res = await fetch('/api/plan/generate-week', {
         method: 'POST',
@@ -404,13 +423,17 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
         body: JSON.stringify({}),
       })
       const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Could not generate your weekly plan.')
+      }
       if (data.success) {
         setWeekGeneratedNotice(true)
-        loadMealPlans()
+        await loadMealPlans()
         setTimeout(() => setWeekGeneratedNotice(false), 4000)
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Generate week error:', err)
+      setWeekGenerateError(err?.message || 'Could not generate your weekly plan. Please try again.')
     } finally {
       setIsGeneratingWeek(false)
     }
@@ -668,9 +691,9 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                 {priorityMeal.item && (
                   <div className="mise-ready-card self-end rounded-2xl border p-3.5 flex items-center justify-between gap-4 sm:min-w-[280px]">
                     <div>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#b25537]">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#b25537]">
                         <priorityMeal.icon className="size-3 text-[#b25537]" />
-                        {priorityMeal.slot} READY
+                        {priorityMeal.slot} • BEST RIGHT NOW
                       </span>
                       <p className="font-serif text-sm font-bold text-[#223129] truncate max-w-[150px]">
                         {priorityMeal.item.name}
@@ -884,6 +907,13 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
               <div className="rounded-2xl bg-[#eef6f0] border border-[#c4e2cd] p-4 text-[#245e38] flex items-center gap-2 text-xs font-semibold">
                 <CheckCircle2 className="size-4 text-[#2e7d32]" />
                 <span>Generated a balanced 7-day meal plan across Breakfast, Lunch, High Tea, and Dinner!</span>
+              </div>
+            )}
+
+            {weekGenerateError && (
+              <div role="alert" className="rounded-2xl border border-[#ffc8b2] bg-[#fff3ed] p-4 text-xs font-semibold text-[#a73508] flex items-center justify-between gap-3">
+                <span>{weekGenerateError}</span>
+                <button type="button" onClick={handleGenerateWeek} className="rounded-full bg-[#f4510b] px-3 py-1.5 font-bold text-white">Try again</button>
               </div>
             )}
 
