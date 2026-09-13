@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       .select(`
         id, name, title, description, meal_type, category, cuisine, diet_type, difficulty,
         prep_time_minutes, prep_time, cook_time_minutes, cook_time, total_time_minutes,
-        default_servings, servings, image_url, tips, tags
+        default_servings, servings, image_url, tips, tags, ingredients
       `)
       .order('created_at', { ascending: false })
 
@@ -49,13 +49,31 @@ export async function GET(req: NextRequest) {
       servings: r.default_servings || r.servings || 4,
       image_url: r.image_url,
       tips: r.tips,
+      ingredients: r.ingredients || [],
     }))
 
+    const preferredCuisines = userPref?.cuisines || []
+    const blockedIngredients = [
+      ...(userPref?.allergies || []),
+      ...(userPref?.dislikes || []),
+      ...(userPref?.avoided_ingredients || []),
+    ].map((value: string) => value.toLowerCase())
+    const selectedDiet = String(userPref?.diet_type || '').toLowerCase()
+    const filtered = normalized.filter(recipe => {
+      const dietMatches = !selectedDiet || selectedDiet.includes('flexible') || recipe.diet_type.toLowerCase() === selectedDiet
+      const cuisineMatches = preferredCuisines.length === 0 || preferredCuisines.some((cuisine: string) => cuisine.toLowerCase() === recipe.cuisine.toLowerCase())
+      const timeMatches = !userPref?.max_cook_time || recipe.total_time <= userPref.max_cook_time
+      const ingredientText = JSON.stringify(recipe.ingredients).toLowerCase()
+      const safeForUser = !blockedIngredients.some((ingredient: string) => ingredientText.includes(ingredient))
+      return dietMatches && cuisineMatches && timeMatches && safeForUser
+    })
+    const personalized = filtered.length ? filtered : normalized
+
     // Organize by meal slot
-    const breakfast = normalized.filter(r => r.meal_type === 'breakfast')
-    const lunch = normalized.filter(r => r.meal_type === 'lunch')
-    const high_tea = normalized.filter(r => r.meal_type === 'high_tea')
-    const dinner = normalized.filter(r => r.meal_type === 'dinner')
+    const breakfast = personalized.filter(r => r.meal_type === 'breakfast')
+    const lunch = personalized.filter(r => r.meal_type === 'lunch')
+    const high_tea = personalized.filter(r => r.meal_type === 'high_tea')
+    const dinner = personalized.filter(r => r.meal_type === 'dinner')
 
     // Determine current time-based context
     const currentHour = new Date().getHours()
@@ -104,10 +122,10 @@ export async function GET(req: NextRequest) {
       activePlan,
       pendingTasks: pendingTasks || [],
       dailySlots: {
-        breakfast: breakfast[0] || normalized[0],
-        lunch: lunch[0] || normalized[1],
-        high_tea: high_tea[0] || normalized[2],
-        dinner: dinner[0] || normalized[3],
+        breakfast: breakfast[0] || personalized[0],
+        lunch: lunch[0] || personalized[1],
+        high_tea: high_tea[0] || personalized[2],
+        dinner: dinner[0] || personalized[3],
       },
       allSlots: {
         breakfast,

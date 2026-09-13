@@ -16,10 +16,20 @@ export async function POST(req: NextRequest) {
     // 2. Fetch available recipes in Supabase
     const { data: recipes } = await supabase
       .from('recipes')
-      .select('id, name, title, meal_type, category, prep_time_minutes, cook_time_minutes')
+      .select('id, name, title, meal_type, category, cuisine, diet_type, prep_time_minutes, cook_time_minutes, total_time_minutes, ingredients')
       .limit(40)
 
-    let recipePool = (recipes || []).map(r => ({
+    const selectedDiet = String(userPref?.diet_type || '').toLowerCase()
+    const preferredCuisines = userPref?.cuisines || []
+    const blocked = [...(userPref?.allergies || []), ...(userPref?.dislikes || []), ...(userPref?.avoided_ingredients || [])].map((value: string) => value.toLowerCase())
+    const eligibleRecipes = (recipes || []).filter((recipe: any) => {
+      const dietMatches = !selectedDiet || selectedDiet.includes('flexible') || String(recipe.diet_type || '').toLowerCase() === selectedDiet
+      const cuisineMatches = preferredCuisines.length === 0 || preferredCuisines.some((cuisine: string) => cuisine.toLowerCase() === String(recipe.cuisine || '').toLowerCase())
+      const timeMatches = !userPref?.max_cook_time || recipe.total_time_minutes <= userPref.max_cook_time
+      const safe = !blocked.some((ingredient: string) => JSON.stringify(recipe.ingredients || []).toLowerCase().includes(ingredient))
+      return dietMatches && cuisineMatches && timeMatches && safe
+    })
+    let recipePool = eligibleRecipes.map(r => ({
       id: r.id,
       name: r.name || r.title,
       meal_type: (r.meal_type || r.category || 'dinner').toLowerCase(),
