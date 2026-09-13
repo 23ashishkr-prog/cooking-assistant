@@ -232,9 +232,16 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     try {
       const res = await fetch('/api/meal-plans')
       const data = await res.json()
-      if (data.plans) setMealPlans(data.plans)
+      if (res.ok && data.plans?.length) {
+        setMealPlans(data.plans)
+      } else {
+        const saved = window.localStorage.getItem('moaka-week-plan')
+        if (saved) setMealPlans(JSON.parse(saved))
+      }
     } catch (err) {
       console.warn('Load plans error:', err)
+      const saved = window.localStorage.getItem('moaka-week-plan')
+      if (saved) setMealPlans(JSON.parse(saved))
     } finally {
       setLoadingPlans(false)
     }
@@ -413,6 +420,41 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   }
 
   // Generate My Week
+  const buildLocalWeek = () => {
+    const slots = [
+      { type: 'breakfast', time: '08:30' },
+      { type: 'lunch', time: '13:00' },
+      { type: 'high_tea', time: '17:00' },
+      { type: 'dinner', time: '20:30' },
+    ]
+    const plans: MealPlanItem[] = []
+    const base = new Date()
+    for (let day = 0; day < 7; day++) {
+      const date = new Date(base)
+      date.setDate(base.getDate() + day)
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      slots.forEach((slot, slotIndex) => {
+        const matching = recipes.filter(recipe => recipe.meal_type === slot.type)
+        const recipe = matching[day % Math.max(matching.length, 1)] || recipes[(day * 4 + slotIndex) % recipes.length]
+        if (!recipe) return
+        plans.push({
+          id: `local-${dateStr}-${slot.type}`,
+          recipe_id: recipe.id,
+          meal_type: slot.type,
+          planned_date: dateStr,
+          planned_time: slot.time,
+          servings: 4,
+          status: 'planned',
+          recipes: recipe,
+          tasks: [],
+        })
+      })
+    }
+    window.localStorage.setItem('moaka-week-plan', JSON.stringify(plans))
+    setMealPlans(plans)
+    return plans
+  }
+
   const handleGenerateWeek = async () => {
     setIsGeneratingWeek(true)
     setWeekGenerateError(null)
@@ -427,13 +469,23 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
         throw new Error(data.error || 'Could not generate your weekly plan.')
       }
       if (data.success) {
+        if (data.plans?.length) {
+          setMealPlans(data.plans)
+          window.localStorage.setItem('moaka-week-plan', JSON.stringify(data.plans))
+        }
         setWeekGeneratedNotice(true)
-        await loadMealPlans()
         setTimeout(() => setWeekGeneratedNotice(false), 4000)
       }
     } catch (err: any) {
       console.error('Generate week error:', err)
-      setWeekGenerateError(err?.message || 'Could not generate your weekly plan. Please try again.')
+      const localPlans = buildLocalWeek()
+      if (localPlans.length) {
+        setWeekGeneratedNotice(true)
+        setWeekGenerateError(null)
+        setTimeout(() => setWeekGeneratedNotice(false), 4000)
+      } else {
+        setWeekGenerateError(err?.message || 'Could not generate your weekly plan. Please try again.')
+      }
     } finally {
       setIsGeneratingWeek(false)
     }
