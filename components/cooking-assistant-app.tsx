@@ -600,21 +600,22 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
   return (
     <div className="mise-app min-h-screen bg-[#fbf9f5] text-[#223129] pb-24 font-sans">
-      {/* 1. Header with App Title & Realtime Context */}
+      {/* Moaka brand bar */}
       <header className="mise-header sticky top-0 z-30 border-b border-[#ded9cf] bg-[#fbf9f5]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="mise-logo flex size-10 items-center justify-center rounded-2xl bg-[#223129] text-[#f8f6f1] shadow-sm">
-              <ChefHat className="size-5 text-[#df9776]" />
+            <span className="mise-logo flex size-12 items-center justify-center overflow-hidden rounded-2xl shadow-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/moaka-icon.jpg" alt="Moaka M logo with Indian spices" className="size-full object-cover" />
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-serif text-xl font-bold tracking-tight text-[#223129]">Mise</span>
-                <span className="rounded-full bg-[#faede6] px-2 py-0.5 text-[10px] font-bold text-[#b25537] uppercase tracking-wider">
-                  Personal Chef
+                <span className="text-2xl font-black tracking-[-.06em] text-[#25212a]">moaka</span>
+                <span className="rounded-full bg-[#fff0e8] px-2 py-0.5 text-[9px] font-black text-[#f4510b] uppercase tracking-wider">
+                  smart kitchen
                 </span>
               </div>
-              <p className="text-[11px] text-[#736e65]">Your kitchen, but smarter ✦</p>
+              <p className="text-[11px] text-[#817c82]">cook what you have ✦</p>
             </div>
           </div>
 
@@ -636,7 +637,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       <main className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
         {/* ===================== TAB 1: 🏠 HOME ===================== */}
         {activeTab === 'home' && (
-          <div className="space-y-6">
+          <div className="moaka-tab space-y-6">
             {/* Section 16 & 17: Context-Aware Greeting Banner */}
             <section className="mise-hero relative overflow-hidden rounded-[2rem] border p-5 sm:p-8">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -846,7 +847,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
         {/* ===================== TAB 2: 📅 PLAN ===================== */}
         {activeTab === 'plan' && (
-          <div className="space-y-6">
+          <div className="moaka-tab space-y-6">
             {/* Header with Generate My Week */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs">
               <div>
@@ -1048,7 +1049,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
         {/* ===================== TAB 3: 🛒 KITCHEN ===================== */}
         {activeTab === 'kitchen' && (
-          <div className="space-y-6">
+          <div className="moaka-tab space-y-6">
             {/* Header & What Can I Cook trigger */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs">
               <div>
@@ -1330,7 +1331,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
         {/* ===================== TAB 4: ❤️ FAVORITES ===================== */}
         {activeTab === 'favorites' && (
-          <div className="space-y-6">
+          <div className="moaka-tab space-y-6">
             <div className="rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs">
               <p className="text-xs font-bold uppercase tracking-widest text-[#b25537]">Cooking History</p>
               <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#223129]">
@@ -1443,7 +1444,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
         {/* ===================== TAB 5: 👤 PROFILE & ADMIN ===================== */}
         {activeTab === 'profile' && (
-          <div className="space-y-6">
+          <div className="moaka-tab space-y-6">
             <div className="rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs">
               <p className="text-xs font-bold uppercase tracking-widest text-[#b25537]">Preferences &amp; Management</p>
               <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#223129]">
@@ -1638,7 +1639,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       >
         <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
           {[
-            { id: 'home', label: 'Home', icon: Sun },
+            { id: 'home', label: 'Discover', icon: ChefHat },
             { id: 'plan', label: 'Plan', icon: Calendar },
             { id: 'kitchen', label: 'Kitchen', icon: ShoppingBag },
             { id: 'favorites', label: 'Favorites', icon: Heart },
@@ -1654,7 +1655,12 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                   isActive ? 'text-[#b25537] font-bold' : 'text-[#736e65] hover:text-[#223129]'
                 }`}
               >
-                <TabIcon className={`size-5 transition ${isActive ? 'scale-110 text-[#b25537]' : ''}`} />
+                {id === 'kitchen' ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src="/moaka-icon.jpg" alt="" className={`moaka-nav-logo ${isActive ? 'is-active' : ''}`} />
+                ) : (
+                  <TabIcon className={`size-5 transition ${isActive ? 'scale-110 text-[#f4510b]' : ''}`} />
+                )}
                 <span className="text-[10px] mt-0.5">{label}</span>
               </button>
             )

@@ -538,3 +538,188 @@ body {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Moaka — warm, food-first mobile product language */
+.mise-app {
+  --ink: #29262e;
+  --grape: #f4510b;
+  --lime: #ffd928;
+  --coral: #f4510b;
+  background:
+    radial-gradient(circle at 10% 0%, rgb(255 218 181 / 35%), transparent 28rem),
+    linear-gradient(180deg, #fff 0%, #fbfaf8 55%, #fff5ee 100%);
+}
+
+.mise-header {
+  border-color: rgb(41 38 46 / 7%);
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 12px 36px rgb(54 35 23 / 7%);
+}
+
+.mise-logo {
+  background: #f4510b;
+  border: 3px solid white;
+  box-shadow: 0 7px 18px rgb(244 81 11 / 28%);
+  transform: none;
+}
+
+.mise-app main { max-width: 72rem; }
+
+.mise-hero {
+  min-height: 35rem;
+  border: 0;
+  background: #080808;
+  box-shadow: 0 30px 70px rgb(38 20 9 / 25%);
+}
+
+.mise-hero-art {
+  inset: 0 0 0 auto;
+  width: 70%;
+  object-position: 66% center;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 21%, #000 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 21%, #000 100%);
+}
+
+.mise-hero::before {
+  background: linear-gradient(90deg, #090909 0%, rgb(9 9 9 / 96%) 39%, rgb(9 9 9 / 16%) 75%), linear-gradient(0deg, rgb(0 0 0 / 50%), transparent 55%);
+}
+
+.mise-hero h1 { color: white; }
+.mise-hero h1 em { color: #ff5a12; }
+.mise-hero p { color: rgb(255 255 255 / 74%); }
+.mise-hero > div > div > p:first-child { color: #ff6a28; }
+
+.mise-chip {
+  border-color: rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 12%);
+  color: white;
+  box-shadow: none;
+}
+
+.mise-hero::after {
+  content: "MOAKA PICK";
+  border: 0;
+  background: #f4510b;
+  color: white;
+  box-shadow: 0 9px 24px rgb(244 81 11 / 35%);
+}
+
+.mise-ready-card {
+  border-color: rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 22%);
+}
+.mise-ready-card p { color: #29262e; }
+
+.mise-flavor-ticker {
+  border: 0;
+  background: #f4510b;
+  color: white;
+  box-shadow: 0 12px 28px rgb(244 81 11 / 22%);
+  transform: none;
+}
+.mise-flavor-ticker b { color: #ffd928; }
+
+.mise-meal-card {
+  border: 0;
+  border-radius: 1.65rem;
+  box-shadow: 0 14px 36px rgb(45 31 23 / 10%);
+}
+.mise-meal-photo { margin: -.25rem -.25rem 1rem; width: calc(100% + .5rem); }
+.mise-meal-title { font-size: 1.25rem; }
+
+.moaka-tab > div.rounded-3xl,
+.moaka-tab > section.rounded-3xl,
+.moaka-tab article,
+.mise-prep-panel,
+.mise-kitchen-scan {
+  border-color: rgb(41 38 46 / 7%) !important;
+  background-color: white !important;
+  box-shadow: 0 14px 40px rgb(55 35 25 / 8%) !important;
+}
+
+.moaka-tab > div:first-child:not(.mise-flavor-ticker),
+.moaka-tab > section:first-child:not(.mise-hero) {
+  position: relative;
+  overflow: hidden;
+  border: 0 !important;
+  background: linear-gradient(120deg, #fff 0%, #fff7f1 100%) !important;
+}
+
+.moaka-tab > div:first-child:not(.mise-flavor-ticker)::after,
+.moaka-tab > section:first-child:not(.mise-hero)::after {
+  content: "M";
+  position: absolute;
+  right: 1.2rem;
+  top: 50%;
+  color: rgb(244 81 11 / 7%);
+  font-size: 8rem;
+  font-weight: 1000;
+  line-height: 1;
+  transform: translateY(-50%) rotate(-8deg);
+  pointer-events: none;
+}
+
+.mise-kitchen-scan {
+  background: linear-gradient(145deg, #fff, #fff4ec) !important;
+}
+
+.mise-scan-photo { min-height: 300px; }
+
+.mise-app button[class*="bg-[#b25537]"],
+.mise-app button[class*="bg-[#223129]"] {
+  background: #f4510b !important;
+  color: white !important;
+  box-shadow: 0 8px 20px rgb(244 81 11 / 22%);
+}
+
+.mise-app button[class*="bg-[#b25537]"]:hover,
+.mise-app button[class*="bg-[#223129]"]:hover {
+  background: #d94000 !important;
+}
+
+.mise-app input,
+.mise-app select,
+.mise-app textarea {
+  border-color: rgb(41 38 46 / 10%) !important;
+  background: #fafafa !important;
+}
+
+.mise-nav {
+  bottom: 1rem;
+  width: min(calc(100% - 1.4rem), 35rem);
+  border: 0;
+  border-radius: 2rem;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 18px 55px rgb(43 27 19 / 18%);
+}
+
+.mise-nav button { color: #aaa5a7; }
+.mise-nav button[class*="text-[#b25537]"] { color: #f4510b !important; }
+.moaka-nav-logo {
+  width: 2.85rem;
+  height: 2.85rem;
+  margin-top: -1.65rem;
+  border: 4px solid white;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 8px 22px rgb(244 81 11 / 28%);
+}
+.moaka-nav-logo.is-active { transform: scale(1.08); }
+
+@media (max-width: 639px) {
+  .mise-app main { padding-left: .85rem; padding-right: .85rem; }
+  .mise-header > div { padding-left: 1rem; padding-right: 1rem; }
+  .mise-hero { min-height: 39rem; border-radius: 0 0 2.1rem 2.1rem; margin-left: -.85rem; margin-right: -.85rem; }
+  .mise-hero-art {
+    inset: auto 0 0;
+    width: 100%;
+    height: 58%;
+    mask-image: linear-gradient(180deg, transparent 0%, #000 25%, #000 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 25%, #000 100%);
+  }
+  .mise-hero::before { background: linear-gradient(180deg, #080808 0%, rgb(8 8 8 / 93%) 39%, transparent 70%); }
+  .mise-hero h1 { font-size: clamp(3rem, 17vw, 4.7rem); }
+  .moaka-tab { gap: 1rem; }
+  .moaka-tab > div.rounded-3xl, .moaka-tab > section.rounded-3xl { border-radius: 1.6rem; }
+}
