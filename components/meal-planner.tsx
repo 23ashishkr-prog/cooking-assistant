@@ -20,6 +20,7 @@ import {
   Layers,
 } from 'lucide-react'
 import type { Recipe } from '@/lib/supabase/server'
+import { cuisineFallbackImage } from '@/lib/recipe-personalization'
 
 type Guide = {
   title: string
@@ -318,7 +319,7 @@ export function MealPlanner({ initialRecipes }: { initialRecipes: Recipe[] }) {
                             className="size-full object-cover transition duration-300 group-hover:scale-105"
                             onError={(event) => {
                               event.currentTarget.onerror = null
-                              event.currentTarget.src = '/gen-z-food-hero.jpg'
+                              event.currentTarget.src = cuisineFallbackImage(recipe.cuisine)
                             }}
                           />
                         ) : (
@@ -425,12 +426,12 @@ export function MealPlanner({ initialRecipes }: { initialRecipes: Recipe[] }) {
 
                   {(
                     <img
-                      src={selectedRecipe.image_url || '/gen-z-food-hero.jpg'}
+                      src={selectedRecipe.image_url || cuisineFallbackImage(selectedRecipe.cuisine)}
                       alt={selectedRecipe.title}
                       className="size-20 shrink-0 rounded-2xl object-cover shadow-md"
                       onError={(event) => {
                         event.currentTarget.onerror = null
-                        event.currentTarget.src = '/gen-z-food-hero.jpg'
+                        event.currentTarget.src = cuisineFallbackImage(selectedRecipe.cuisine)
                       }}
                     />
                   )}

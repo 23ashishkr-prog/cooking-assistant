@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText } from '@/lib/recipe-personalization'
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,23 +18,27 @@ export async function POST(req: NextRequest) {
     const { data: recipes } = await supabase
       .from('recipes')
       .select('id, name, title, meal_type, category, cuisine, diet_type, prep_time_minutes, cook_time_minutes, total_time_minutes, ingredients')
-      .limit(40)
+      .eq('published', true)
+      .limit(100)
 
     const selectedDiet = String(userPref?.diet_type || '').toLowerCase()
     const preferredCuisines = userPref?.cuisines || []
     const blocked = [...(userPref?.allergies || []), ...(userPref?.dislikes || []), ...(userPref?.avoided_ingredients || [])].map((value: string) => value.toLowerCase())
     const eligibleRecipes = (recipes || []).filter((recipe: any) => {
       const dietMatches = !selectedDiet || selectedDiet.includes('flexible') || String(recipe.diet_type || '').toLowerCase() === selectedDiet
-      const cuisineMatches = preferredCuisines.length === 0 || preferredCuisines.some((cuisine: string) => cuisine.toLowerCase() === String(recipe.cuisine || '').toLowerCase())
+      const cuisineMatches = cuisineMatchesPreference(recipe.cuisine, preferredCuisines)
       const timeMatches = !userPref?.max_cook_time || recipe.total_time_minutes <= userPref.max_cook_time
-      const safe = !blocked.some((ingredient: string) => JSON.stringify(recipe.ingredients || []).toLowerCase().includes(ingredient))
+      const safe = !blocked.some((ingredient: string) => ingredientText(recipe).includes(ingredient))
       return dietMatches && cuisineMatches && timeMatches && safe
     })
-    let recipePool = eligibleRecipes.map(r => ({
+    const favorites = userPref?.favorite_ingredients || []
+    const recipePool = [...eligibleRecipes]
+      .sort((a, b) => favoriteIngredientScore(b, favorites) - favoriteIngredientScore(a, favorites))
+      .map(r => ({
       id: r.id,
       name: r.name || r.title,
       meal_type: (r.meal_type || r.category || 'dinner').toLowerCase(),
-    }))
+      }))
 
     const baseDate = startDate ? new Date(startDate) : new Date()
     const createdPlans = []
@@ -65,7 +70,7 @@ export async function POST(req: NextRequest) {
 
         const { data: newPlan, error: planError } = await supabase
           .from('meal_plans')
-          .insert({
+          .upsert({
             user_id: userId,
             recipe_id: chosen.id,
             meal_type: slot.type,
@@ -73,7 +78,7 @@ export async function POST(req: NextRequest) {
             planned_time: slot.time,
             servings: 4,
             status: 'planned',
-          })
+          }, { onConflict: 'user_id,planned_date,meal_type' })
           .select()
           .single()
 

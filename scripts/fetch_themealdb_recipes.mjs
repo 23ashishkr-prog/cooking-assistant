@@ -1,17 +1,11 @@
 const limit = Number(process.argv[2] || 100)
 const letters = 'abcdefghijklmnopqrstuvwxyz'.split('')
-const meals = []
-
-for (const letter of letters) {
+const payloads = await Promise.all(letters.map(async (letter) => {
   const response = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?f=${letter}`)
   if (!response.ok) throw new Error(`TheMealDB request failed for ${letter}: ${response.status}`)
-  const payload = await response.json()
-  for (const meal of payload.meals || []) {
-    if (!meals.some((item) => item.idMeal === meal.idMeal)) meals.push(meal)
-    if (meals.length >= limit) break
-  }
-  if (meals.length >= limit) break
-}
+  return response.json()
+}))
+const meals = [...new Map(payloads.flatMap(payload => payload.meals || []).map(meal => [meal.idMeal, meal])).values()]
 
 const normalize = (value) => String(value || '')
   .trim()
@@ -71,5 +65,5 @@ const normalized = meals.slice(0, limit).map((meal) => {
   }
 })
 
-if (normalized.length < limit) throw new Error(`Only found ${normalized.length} recipes; expected ${limit}`)
+if (normalized.length < limit) console.error(`TheMealDB currently exposes ${normalized.length} recipes (requested ${limit}).`)
 process.stdout.write(JSON.stringify(normalized))

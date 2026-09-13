@@ -37,6 +37,7 @@ import {
 import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
+import { cuisineFallbackImage } from '@/lib/recipe-personalization'
 
 export type RecipeItem = {
   id: string
@@ -428,42 +429,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     }
   }
 
-  // Generate My Week
-  const buildLocalWeek = () => {
-    const slots = [
-      { type: 'breakfast', time: '08:30' },
-      { type: 'lunch', time: '13:00' },
-      { type: 'high_tea', time: '17:00' },
-      { type: 'dinner', time: '20:30' },
-    ]
-    const plans: MealPlanItem[] = []
-    const base = new Date()
-    for (let day = 0; day < 7; day++) {
-      const date = new Date(base)
-      date.setDate(base.getDate() + day)
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-      slots.forEach((slot, slotIndex) => {
-        const matching = recipes.filter(recipe => recipe.meal_type === slot.type)
-        const recipe = matching[day % Math.max(matching.length, 1)] || recipes[(day * 4 + slotIndex) % recipes.length]
-        if (!recipe) return
-        plans.push({
-          id: `local-${dateStr}-${slot.type}`,
-          recipe_id: recipe.id,
-          meal_type: slot.type,
-          planned_date: dateStr,
-          planned_time: slot.time,
-          servings: 4,
-          status: 'planned',
-          recipes: recipe,
-          tasks: [],
-        })
-      })
-    }
-    window.localStorage.setItem('moaka-week-plan', JSON.stringify(plans))
-    setMealPlans(plans)
-    return plans
-  }
-
+  // Generate My Week from published Supabase recipes only.
   const handleGenerateWeek = async () => {
     setIsGeneratingWeek(true)
     setWeekGenerateError(null)
@@ -478,23 +444,13 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
         throw new Error(data.error || 'Could not generate your weekly plan.')
       }
       if (data.success) {
-        if (data.plans?.length) {
-          setMealPlans(data.plans)
-          window.localStorage.setItem('moaka-week-plan', JSON.stringify(data.plans))
-        }
+        await loadMealPlans()
         setWeekGeneratedNotice(true)
         setTimeout(() => setWeekGeneratedNotice(false), 4000)
       }
     } catch (err: any) {
       console.error('Generate week error:', err)
-      const localPlans = buildLocalWeek()
-      if (localPlans.length) {
-        setWeekGeneratedNotice(true)
-        setWeekGenerateError(null)
-        setTimeout(() => setWeekGeneratedNotice(false), 4000)
-      } else {
-        setWeekGenerateError(err?.message || 'Could not generate your weekly plan. Please try again.')
-      }
+      setWeekGenerateError(err?.message || 'Could not generate your weekly plan. Please try again.')
     } finally {
       setIsGeneratingWeek(false)
     }
@@ -507,7 +463,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       const res = await fetch('/api/kitchen/what-can-i-cook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userProfile.id || userProfile.user_id || 'default_user' }),
+        body: JSON.stringify({ userId: userProfile.user_id || 'default_user' }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Could not match recipes')
@@ -528,7 +484,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id: userProfile.id || userProfile.user_id || 'default_user',
+        user_id: userProfile.user_id || 'default_user',
         recipe_id: suggestion.recipe_id,
         missing_items: suggestion.missing_items,
         remind_at: tomorrow.toISOString(),
@@ -695,7 +651,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: userProfile.id || userProfile.user_id || 'default_user',
+          user_id: userProfile.user_id || 'default_user',
           ingredient_name: item.name,
           quantity: item.quantity || 1,
           unit: item.unit || 'item',
@@ -931,13 +887,13 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                           <div className="mise-meal-photo">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={item.image_url || '/gen-z-food-hero.jpg'}
+                              src={item.image_url || cuisineFallbackImage(item.cuisine)}
                               alt={item.name}
                               className="size-full object-cover group-hover:scale-105 transition duration-300"
                               loading="lazy"
                               onError={(event) => {
                                 event.currentTarget.onerror = null
-                                event.currentTarget.src = '/gen-z-food-hero.jpg'
+                                event.currentTarget.src = cuisineFallbackImage(item.cuisine)
                               }}
                             />
                           </div>
@@ -1535,13 +1491,13 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                           <div className="relative mb-2 h-24 w-full overflow-hidden rounded-xl bg-[#e8e4db]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={rec.image_url || '/gen-z-food-hero.jpg'}
+                              src={rec.image_url || cuisineFallbackImage(rec.cuisine)}
                               alt={rec.name}
                               className="size-full object-cover"
                               loading="lazy"
                               onError={(event) => {
                                 event.currentTarget.onerror = null
-                                event.currentTarget.src = '/gen-z-food-hero.jpg'
+                                event.currentTarget.src = cuisineFallbackImage(rec.cuisine)
                               }}
                             />
                           </div>

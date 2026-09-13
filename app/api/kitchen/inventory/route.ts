@@ -35,9 +35,11 @@ export async function POST(req: NextRequest) {
       .insert({
         user_id,
         ingredient_name: ingredient_name.trim(),
+        normalized_name: ingredient_name.trim().toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' '),
         quantity: Number(quantity) || 1,
         unit: unit || 'item',
         expiry_date: expiry_date || null,
+        source: body.source || 'manual',
       })
       .select()
       .single()

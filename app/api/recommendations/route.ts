@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { GoogleGenAI } from '@google/genai'
+import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText } from '@/lib/recipe-personalization'
 
 export async function GET(req: NextRequest) {
   try {
@@ -61,13 +61,14 @@ export async function GET(req: NextRequest) {
     const selectedDiet = String(userPref?.diet_type || '').toLowerCase()
     const filtered = normalized.filter(recipe => {
       const dietMatches = !selectedDiet || selectedDiet.includes('flexible') || recipe.diet_type.toLowerCase() === selectedDiet
-      const cuisineMatches = preferredCuisines.length === 0 || preferredCuisines.some((cuisine: string) => cuisine.toLowerCase() === recipe.cuisine.toLowerCase())
+      const cuisineMatches = cuisineMatchesPreference(recipe.cuisine, preferredCuisines)
       const timeMatches = !userPref?.max_cook_time || recipe.total_time <= userPref.max_cook_time
-      const ingredientText = JSON.stringify(recipe.ingredients).toLowerCase()
-      const safeForUser = !blockedIngredients.some((ingredient: string) => ingredientText.includes(ingredient))
+      const recipeIngredients = ingredientText(recipe)
+      const safeForUser = !blockedIngredients.some((ingredient: string) => recipeIngredients.includes(ingredient))
       return dietMatches && cuisineMatches && timeMatches && safeForUser
     })
-    const personalized = filtered.length ? filtered : normalized
+    const favorites = userPref?.favorite_ingredients || []
+    const personalized = [...filtered].sort((a, b) => favoriteIngredientScore(b, favorites) - favoriteIngredientScore(a, favorites))
 
     // Organize by meal slot
     const breakfast = personalized.filter(r => r.meal_type === 'breakfast')
@@ -122,10 +123,10 @@ export async function GET(req: NextRequest) {
       activePlan,
       pendingTasks: pendingTasks || [],
       dailySlots: {
-        breakfast: breakfast[0] || personalized[0],
-        lunch: lunch[0] || personalized[1],
-        high_tea: high_tea[0] || personalized[2],
-        dinner: dinner[0] || personalized[3],
+        breakfast: breakfast[0] || personalized[0] || null,
+        lunch: lunch[0] || personalized[1] || personalized[0] || null,
+        high_tea: high_tea[0] || personalized[2] || personalized[0] || null,
+        dinner: dinner[0] || personalized[3] || personalized[0] || null,
       },
       allSlots: {
         breakfast,

@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react'
 import type { RecipeItem, InventoryItem, MealPlanItem } from './cooking-assistant-app'
+import { cuisineFallbackImage } from '@/lib/recipe-personalization'
 
 export type NightPrepTask = {
   id: string
@@ -1097,13 +1098,13 @@ export function TomorrowPlanNightPrep({
                       <div className="relative mb-2.5 h-24 w-full overflow-hidden rounded-xl bg-[#f0ece3]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={recipe.image_url || '/gen-z-food-hero.jpg'}
+                          src={recipe.image_url || cuisineFallbackImage(recipe.cuisine)}
                           alt={recipe.name}
                           className="size-full object-cover group-hover:scale-105 transition duration-300"
                           loading="lazy"
                           onError={(event) => {
                             event.currentTarget.onerror = null
-                            event.currentTarget.src = '/gen-z-food-hero.jpg'
+                            event.currentTarget.src = cuisineFallbackImage(recipe.cuisine)
                           }}
                         />
                       </div>
