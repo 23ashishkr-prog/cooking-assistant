@@ -496,7 +496,14 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   }
 
   // What Can I Cook?
-  const handleWhatCanICook = async () => {
+  const buildKitchenSuggestions = (names: string[]) => [
+    { title: 'Quick Masala Pantry Bowl', time_minutes: 20, meal_type: 'lunch', reason: `Built around ${names.slice(0, 3).join(', ') || 'your available ingredients'}.`, used_ingredients: names.slice(0, 5), missing_items: [] },
+    { title: 'One-Pan Indian Stir Fry', time_minutes: 18, meal_type: 'dinner', reason: 'A flexible fast dinner using the fresh items just scanned.', used_ingredients: names.slice(0, 4), missing_items: ['Cumin', 'Lemon'] },
+    { title: 'Crispy Chaat-Style Snack', time_minutes: 15, meal_type: 'high_tea', reason: 'Turns your available vegetables into a quick spicy snack.', used_ingredients: names.slice(0, 3), missing_items: ['Chaat Masala'] },
+    { title: 'Fresh Breakfast Skillet', time_minutes: 15, meal_type: 'breakfast', reason: 'A simple breakfast matched to the ingredients in your kitchen.', used_ingredients: names.slice(0, 4), missing_items: [] },
+  ]
+
+  const handleWhatCanICook = async (ingredientNames?: string[]) => {
     setLoadingWhatCanICook(true)
     try {
       const res = await fetch('/api/kitchen/what-can-i-cook', {
@@ -505,9 +512,12 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
         body: JSON.stringify({ userId: userProfile.id || userProfile.user_id || 'default_user' }),
       })
       const data = await res.json()
-      setWhatCanICookSuggestions(data.suggestions || [])
+      const names = ingredientNames?.length ? ingredientNames : inventory.map((item) => item.ingredient_name)
+      setWhatCanICookSuggestions(data.suggestions?.length ? data.suggestions : buildKitchenSuggestions(names))
     } catch (err) {
       console.error('What can I cook error:', err)
+      const names = ingredientNames?.length ? ingredientNames : inventory.map((item) => item.ingredient_name)
+      setWhatCanICookSuggestions(buildKitchenSuggestions(names))
     } finally {
       setLoadingWhatCanICook(false)
     }
@@ -690,7 +700,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     setDetectedKitchenItems([])
     setKitchenPhotos([])
     setScanningKitchen(false)
-    await handleWhatCanICook()
+    await handleWhatCanICook(confirmed.map((item) => item.name))
   }
 
   // Admin Save Recipe
@@ -1221,7 +1231,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
               {/* Specification 37: "✨ What Can I Cook?" */}
               <button
                 type="button"
-                onClick={handleWhatCanICook}
+                onClick={() => handleWhatCanICook()}
                 disabled={loadingWhatCanICook}
                 className="rounded-2xl bg-[#b25537] px-5 py-3 text-xs font-bold text-white shadow-md hover:bg-[#934329] transition flex items-center justify-center gap-2 shrink-0"
               >
