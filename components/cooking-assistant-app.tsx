@@ -54,11 +54,27 @@ export type RecipeItem = {
   cook_time: number
   total_time?: number
   servings?: number
+  calories?: number
+  nutrition_score?: number
   tips?: string | null
   ingredients?: any[] | null
   instructions?: any[] | null
   preparationTasks?: any[]
   stepsList?: CookingStep[]
+}
+
+const recipeNutrition = (recipe: Partial<RecipeItem>) => {
+  const defaults: Record<string, { calories: number; score: number }> = {
+    breakfast: { calories: 340, score: 8.8 },
+    lunch: { calories: 520, score: 8.5 },
+    high_tea: { calories: 290, score: 7.9 },
+    dinner: { calories: 480, score: 8.6 },
+  }
+  const fallback = defaults[recipe.meal_type || 'dinner'] || defaults.dinner
+  return {
+    calories: recipe.calories || fallback.calories,
+    score: recipe.nutrition_score || fallback.score,
+  }
 }
 
 export type InventoryItem = {
@@ -119,6 +135,8 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
         cook_time: r.cook_time_minutes || r.cook_time || 20,
         total_time: r.total_time_minutes || (r.prep_time_minutes || 15) + (r.cook_time_minutes || 20),
         servings: r.default_servings || r.servings || 4,
+        calories: r.calories || r.calories_per_serving,
+        nutrition_score: r.nutrition_score || r.health_score,
         tips: r.tips,
         ingredients: r.ingredients || [],
         instructions: r.instructions || [],
@@ -328,11 +346,6 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     return { slot: 'DINNER', icon: Moon, item: dinnerSlot }
   }, [contextualSlot, breakfastSlot, lunchSlot, highTeaSlot, dinnerSlot])
 
-  // Active or upcoming plan for today
-  const todayStr = new Date().toISOString().split('T')[0]
-  const todayPlans = useMemo(() => mealPlans.filter((p) => p.planned_date === todayStr), [mealPlans, todayStr])
-  const activePlanToday = todayPlans.find((p) => p.status === 'planned' || p.status === 'cooking' || p.status === 'preparing')
-
   // Search Internet & Add Recipe
   const handleSearchInternet = async (queryToSearch: string) => {
     const q = queryToSearch.trim()
@@ -365,6 +378,8 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
           cook_time: data.recipe.cook_time || 25,
           total_time: (data.recipe.prep_time || 15) + (data.recipe.cook_time || 25),
           servings: data.recipe.servings || 4,
+          calories: data.recipe.calories || data.recipe.calories_per_serving,
+          nutrition_score: data.recipe.nutrition_score || data.recipe.health_score,
           tips: data.recipe.tips,
           ingredients: data.recipe.ingredients || [],
           instructions: data.recipe.instructions || [],
@@ -801,8 +816,8 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
             <section className="mise-hero relative overflow-hidden rounded-[2rem] border p-5 sm:p-8">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/gen-z-food-hero.jpg"
-                alt="A vibrant bowl of spicy noodles with fresh herbs and dumplings"
+                src="/moaka-hero-3d.webp"
+                alt="A floating breakfast bowl with eggs, vegetables, herbs, and a fork"
                 className="mise-hero-art"
               />
               <div className="relative z-10 flex min-h-[30rem] flex-col justify-between sm:min-h-[32rem]">
@@ -851,46 +866,6 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                 )}
               </div>
 
-              {/* Active Plan Priority Banner (if user already scheduled a meal for today) */}
-              {activePlanToday && (
-                <div className="relative z-10 mt-4 rounded-2xl bg-[#223129] text-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-white/10 text-[#df9776]">
-                      <Clock className="size-5" />
-                    </span>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#df9776]">
-                        Scheduled For Today • {activePlanToday.planned_time}
-                      </p>
-                      <h2 className="text-sm sm:text-base font-bold text-white">
-                        {activePlanToday.recipes?.name || activePlanToday.recipes?.title || 'Today’s Meal'}
-                      </h2>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const targetRec =
-                          recipes.find((r) => r.id === activePlanToday.recipe_id) || activePlanToday.recipes
-                        if (targetRec) handleStartCooking(targetRec, activePlanToday.id)
-                      }}
-                      className="rounded-xl bg-[#b25537] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#934329] transition flex items-center gap-1.5"
-                    >
-                      <Flame className="size-3.5" />
-                      <span>START COOKING</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('plan')}
-                      className="rounded-xl border border-white/20 px-3 py-2 text-xs font-medium text-white/80 hover:bg-white/10 transition"
-                    >
-                      Prep Timeline
-                    </button>
-                  </div>
-                </div>
-              )}
             </section>
 
             <div className="mise-flavor-ticker" aria-label="Food inspiration">
@@ -975,6 +950,10 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                         <p className="mt-1 text-xs text-[#736e65] line-clamp-2">
                           {item.description || 'Nutritious homestyle recipe with fresh ingredients.'}
                         </p>
+                        <div className="mise-nutrition-row">
+                          <span className="mise-calorie-pill">🔥 {recipeNutrition(item).calories} kcal</span>
+                          <span className="mise-score-pill">★ {recipeNutrition(item).score}/10</span>
+                        </div>
                       </div>
 
                       {/* Cook Button */}
@@ -1562,6 +1541,10 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                         <h4 className="font-serif text-sm font-bold text-[#223129] mt-1 line-clamp-1">
                           {rec.name}
                         </h4>
+                        <div className="mise-nutrition-row">
+                          <span className="mise-calorie-pill">🔥 {recipeNutrition(rec).calories} kcal</span>
+                          <span className="mise-score-pill">★ {recipeNutrition(rec).score}/10</span>
+                        </div>
                       </div>
 
                       <div className="mt-3 pt-2 border-t border-[#f0ece3] flex items-center gap-2">

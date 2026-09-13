@@ -579,11 +579,17 @@ body {
 }
 
 .mise-hero-art {
-  inset: 0 0 0 auto;
-  width: 70%;
-  object-position: 66% center;
-  mask-image: linear-gradient(90deg, transparent 0%, #000 21%, #000 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 21%, #000 100%);
+  inset: 1.25rem -3.5rem auto auto;
+  width: min(68%, 46rem);
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 38px 34px rgb(0 0 0 / 55%)) saturate(1.1) contrast(1.04);
+  mask-image: radial-gradient(circle at 58% 50%, #000 48%, rgb(0 0 0 / 96%) 66%, transparent 88%);
+  -webkit-mask-image: radial-gradient(circle at 58% 50%, #000 48%, rgb(0 0 0 / 96%) 66%, transparent 88%);
+  transform: perspective(1000px) rotateX(7deg) rotateZ(-3deg) scale(1.07);
+  transform-origin: 62% 55%;
+  animation: moaka-hero-float 6s ease-in-out infinite;
 }
 
 .mise-hero::before {
@@ -616,6 +622,32 @@ body {
   box-shadow: 0 18px 50px rgb(0 0 0 / 22%);
 }
 .mise-ready-card p { color: #29262e; }
+
+@keyframes moaka-hero-float {
+  0%, 100% { transform: perspective(1000px) translateY(0) rotateX(7deg) rotateZ(-3deg) scale(1.07); }
+  50% { transform: perspective(1000px) translateY(-12px) rotateX(4deg) rotateZ(-1.5deg) scale(1.09); }
+}
+
+.mise-nutrition-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-top: .75rem;
+}
+
+.mise-calorie-pill,
+.mise-score-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: .35rem .58rem;
+  font-size: .66rem;
+  font-weight: 900;
+  letter-spacing: -.01em;
+}
+
+.mise-calorie-pill { background: #fff0e8; color: #c53f05; }
+.mise-score-pill { background: #eaf8d5; color: #356a22; }
 
 .mise-flavor-ticker {
   border: 0;
@@ -718,11 +750,11 @@ body {
   .mise-header > div { padding-left: 1rem; padding-right: 1rem; }
   .mise-hero { min-height: 39rem; border-radius: 0 0 2.1rem 2.1rem; margin-left: -.85rem; margin-right: -.85rem; }
   .mise-hero-art {
-    inset: auto 0 0;
-    width: 100%;
-    height: 58%;
-    mask-image: linear-gradient(180deg, transparent 0%, #000 25%, #000 100%);
-    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 25%, #000 100%);
+    inset: auto -18% -3rem auto;
+    width: 118%;
+    height: auto;
+    mask-image: radial-gradient(circle at 58% 52%, #000 50%, rgb(0 0 0 / 96%) 70%, transparent 90%);
+    -webkit-mask-image: radial-gradient(circle at 58% 52%, #000 50%, rgb(0 0 0 / 96%) 70%, transparent 90%);
   }
   .mise-hero::before { background: linear-gradient(180deg, #080808 0%, rgb(8 8 8 / 93%) 39%, transparent 70%); }
   .mise-hero h1 { font-size: clamp(3rem, 17vw, 4.7rem); }
