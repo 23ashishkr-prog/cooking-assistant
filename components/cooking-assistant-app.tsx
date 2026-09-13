@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   ArrowRight,
   BookmarkCheck,
@@ -161,6 +161,10 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   const [scanningKitchen, setScanningKitchen] = useState(false)
   const [kitchenScanStatus, setKitchenScanStatus] = useState<string | null>(null)
   const [detectedKitchenItems, setDetectedKitchenItems] = useState<any[]>([])
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null)
+  const cameraStreamRef = useRef<MediaStream | null>(null)
 
   // Favorites & Feedback State
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([])
@@ -498,7 +502,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       const res = await fetch('/api/kitchen/what-can-i-cook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ userId: userProfile.id || userProfile.user_id || 'default_user' }),
       })
       const data = await res.json()
       setWhatCanICookSuggestions(data.suggestions || [])
@@ -577,6 +581,60 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     }
   }
 
+  const stopKitchenCamera = () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
+    cameraStreamRef.current = null
+    if (cameraVideoRef.current) cameraVideoRef.current.srcObject = null
+    setCameraOpen(false)
+  }
+
+  const openKitchenCamera = async () => {
+    setCameraError(null)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Live camera is not supported here. Use Add photos instead.')
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      })
+      cameraStreamRef.current = stream
+      setCameraOpen(true)
+      window.setTimeout(() => {
+        if (cameraVideoRef.current) {
+          cameraVideoRef.current.srcObject = stream
+          cameraVideoRef.current.play().catch(() => undefined)
+        }
+      }, 0)
+    } catch (error: any) {
+      setCameraError(error?.name === 'NotAllowedError'
+        ? 'Camera permission was blocked. Allow camera access in your browser and try again.'
+        : 'Could not open the camera. Use Add photos instead.')
+    }
+  }
+
+  const captureKitchenPhoto = () => {
+    const video = cameraVideoRef.current
+    if (!video?.videoWidth || kitchenPhotos.length >= 8) return
+    const canvas = document.createElement('canvas')
+    const maxEdge = 1280
+    const scale = Math.min(1, maxEdge / Math.max(video.videoWidth, video.videoHeight))
+    canvas.width = Math.round(video.videoWidth * scale)
+    canvas.height = Math.round(video.videoHeight * scale)
+    canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height)
+    setKitchenPhotos((current) => [...current, {
+      name: `camera-${Date.now()}.jpg`,
+      data: canvas.toDataURL('image/jpeg', 0.8),
+      mimeType: 'image/jpeg',
+    }].slice(0, 8))
+    setKitchenScanStatus(`Captured ${Math.min(kitchenPhotos.length + 1, 8)} photo${kitchenPhotos.length ? 's' : ''}. Add another angle or analyze now.`)
+  }
+
+  useEffect(() => () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
+  }, [])
+
   const handleScanKitchen = async () => {
     if (kitchenPhotos.length === 0) return
     setScanningKitchen(true)
@@ -591,32 +649,48 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       if (!response.ok) throw new Error(result.error || 'Kitchen scan failed.')
 
       const detected = Array.isArray(result.items) ? result.items : []
-      const existingNames = new Set(inventory.map((item) => item.ingredient_name.trim().toLowerCase()))
-      const newItems = detected.filter((item: any) => !existingNames.has(String(item.name).trim().toLowerCase()))
-
-      await Promise.all(
-        newItems.map((item: any) =>
-          fetch('/api/kitchen/inventory', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ingredient_name: item.name,
-              quantity: item.quantity || 1,
-              unit: item.unit || 'item',
-            }),
-          })
-        )
-      )
-
-      setDetectedKitchenItems(detected)
-      setKitchenScanStatus(`Found ${detected.length} items · added ${newItems.length} new`)
-      setKitchenPhotos([])
-      await loadInventory()
+      setDetectedKitchenItems(detected.map((item: any) => ({ ...item, selected: true })))
+      setKitchenScanStatus(`Found ${detected.length} items. Review them, then confirm to add.`)
     } catch (error: any) {
       setKitchenScanStatus(error?.message || 'Kitchen scan failed. Try clearer photos.')
     } finally {
       setScanningKitchen(false)
     }
+  }
+
+  const handleConfirmDetectedItems = async () => {
+    const confirmed = detectedKitchenItems.filter((item) => item.selected)
+    if (!confirmed.length) return
+    setScanningKitchen(true)
+    setKitchenScanStatus('Adding confirmed items…')
+    const existingNames = new Set(inventory.map((item) => item.ingredient_name.trim().toLowerCase()))
+    const newItems = confirmed.filter((item) => !existingNames.has(String(item.name).trim().toLowerCase()))
+    try {
+      const responses = await Promise.all(newItems.map((item) => fetch('/api/kitchen/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userProfile.id || userProfile.user_id || 'default_user',
+          ingredient_name: item.name,
+          quantity: item.quantity || 1,
+          unit: item.unit || 'item',
+        }),
+      })))
+      if (responses.some((response) => !response.ok)) throw new Error('Some items could not sync.')
+      await loadInventory()
+    } catch {
+      setInventory((current) => [...current, ...newItems.map((item, index) => ({
+        id: `local-scan-${Date.now()}-${index}`,
+        ingredient_name: item.name,
+        quantity: item.quantity || 1,
+        unit: item.unit || 'item',
+      }))])
+    }
+    setKitchenScanStatus(`Added ${newItems.length} confirmed items. Finding recipes for you…`)
+    setDetectedKitchenItems([])
+    setKitchenPhotos([])
+    setScanningKitchen(false)
+    await handleWhatCanICook()
   }
 
   // Admin Save Recipe
@@ -1186,19 +1260,9 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <label className="cursor-pointer rounded-xl border border-[#ded9cf] bg-white px-3.5 py-2 text-xs font-bold text-[#223129] hover:border-[#7841e7] hover:text-[#7841e7]">
+                  <button type="button" onClick={openKitchenCamera} className="rounded-xl border border-[#ded9cf] bg-white px-3.5 py-2 text-xs font-bold text-[#223129] hover:border-[#f4510b] hover:text-[#f4510b]">
                     <span className="flex items-center gap-1.5"><Camera className="size-4" /> Take photo</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="sr-only"
-                      onChange={(event) => {
-                        handleKitchenPhotos(event.target.files)
-                        event.currentTarget.value = ''
-                      }}
-                    />
-                  </label>
+                  </button>
                   <label className="cursor-pointer rounded-xl border border-[#ded9cf] bg-white px-3.5 py-2 text-xs font-bold text-[#223129] hover:border-[#7841e7] hover:text-[#7841e7]">
                     <span className="flex items-center gap-1.5"><Images className="size-4" /> Add photos</span>
                     <input
@@ -1214,6 +1278,24 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                   </label>
                 </div>
               </div>
+
+              {cameraError && <p role="alert" className="mt-3 rounded-xl bg-[#fff1eb] p-3 text-xs font-semibold text-[#a73508]">{cameraError}</p>}
+
+              {cameraOpen && (
+                <div className="mt-4 overflow-hidden rounded-2xl bg-black p-2 shadow-xl">
+                  <div className="relative aspect-video overflow-hidden rounded-xl bg-[#151515]">
+                    <video ref={cameraVideoRef} autoPlay playsInline muted className="size-full object-cover" aria-label="Live kitchen camera" />
+                    <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur">LIVE CAMERA</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-3 py-3">
+                    <button type="button" onClick={stopKitchenCamera} className="rounded-full bg-white/15 px-4 py-2 text-xs font-bold text-white">Close</button>
+                    <button type="button" onClick={captureKitchenPhoto} disabled={kitchenPhotos.length >= 8} className="flex size-14 items-center justify-center rounded-full border-4 border-white bg-[#f4510b] text-white shadow-lg disabled:opacity-40" aria-label="Capture kitchen photo">
+                      <Camera className="size-6" />
+                    </button>
+                    <span className="min-w-[64px] text-xs font-bold text-white/75">{kitchenPhotos.length}/8</span>
+                  </div>
+                </div>
+              )}
 
               {kitchenPhotos.length > 0 && (
                 <div className="mt-4">
@@ -1250,12 +1332,22 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
               )}
 
               {detectedKitchenItems.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {detectedKitchenItems.map((item, index) => (
-                    <span key={`${item.name}-${index}`} className="rounded-full bg-[#efffd4] px-2.5 py-1 text-[10px] font-bold text-[#314b08]">
-                      {item.name} ✓
-                    </span>
-                  ))}
+                <div className="mt-4 rounded-2xl border border-[#ffd4c2] bg-[#fff9f6] p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div><p className="text-xs font-extrabold text-[#29262e]">Confirm detected items</p><p className="text-[10px] text-[#736e65]">Tap an item to include or remove it.</p></div>
+                    <span className="rounded-full bg-[#f4510b] px-2 py-1 text-[10px] font-bold text-white">{detectedKitchenItems.filter((item) => item.selected).length} selected</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {detectedKitchenItems.map((item, index) => (
+                      <button type="button" key={`${item.name}-${index}`} onClick={() => setDetectedKitchenItems((current) => current.map((entry, itemIndex) => itemIndex === index ? { ...entry, selected: !entry.selected } : entry))} className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${item.selected ? 'border-[#f4510b] bg-[#f4510b] text-white' : 'border-[#ded9cf] bg-white text-[#736e65]'}`}>
+                        {item.selected ? '✓ ' : '+ '}{item.name} · {Math.round((item.confidence || .7) * 100)}%
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" onClick={handleConfirmDetectedItems} disabled={scanningKitchen || !detectedKitchenItems.some((item) => item.selected)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#f4510b] px-4 py-3 text-xs font-extrabold text-white shadow-md disabled:opacity-50">
+                    {scanningKitchen ? <LoaderCircle className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+                    Confirm &amp; find recipes
+                  </button>
                 </div>
               )}
                 </div>
