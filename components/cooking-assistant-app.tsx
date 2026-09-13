@@ -37,7 +37,6 @@ import {
 import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
-import { withDefaultRecipes } from '@/lib/default-recipes'
 
 export type RecipeItem = {
   id: string
@@ -64,16 +63,9 @@ export type RecipeItem = {
 }
 
 const recipeNutrition = (recipe: Partial<RecipeItem>) => {
-  const defaults: Record<string, { calories: number; score: number }> = {
-    breakfast: { calories: 340, score: 8.8 },
-    lunch: { calories: 520, score: 8.5 },
-    high_tea: { calories: 290, score: 7.9 },
-    dinner: { calories: 480, score: 8.6 },
-  }
-  const fallback = defaults[recipe.meal_type || 'dinner'] || defaults.dinner
   return {
-    calories: recipe.calories || fallback.calories,
-    score: recipe.nutrition_score || fallback.score,
+    calories: recipe.calories ?? null,
+    score: recipe.nutrition_score ?? null,
   }
 }
 
@@ -119,7 +111,6 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
   // Recipes State
   const [recipes, setRecipes] = useState<RecipeItem[]>(() =>
-    withDefaultRecipes(
       initialRecipes.map((r) => ({
         id: r.id,
         name: r.name || r.title || 'Curated Dish',
@@ -141,7 +132,6 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
         ingredients: r.ingredients || [],
         instructions: r.instructions || [],
       }))
-    )
   )
 
   // Current Context Greeting
@@ -511,14 +501,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   }
 
   // What Can I Cook?
-  const buildKitchenSuggestions = (names: string[]) => [
-    { title: 'Quick Masala Pantry Bowl', time_minutes: 20, meal_type: 'lunch', reason: `Built around ${names.slice(0, 3).join(', ') || 'your available ingredients'}.`, used_ingredients: names.slice(0, 5), missing_items: [] },
-    { title: 'One-Pan Indian Stir Fry', time_minutes: 18, meal_type: 'dinner', reason: 'A flexible fast dinner using the fresh items just scanned.', used_ingredients: names.slice(0, 4), missing_items: ['Cumin', 'Lemon'] },
-    { title: 'Crispy Chaat-Style Snack', time_minutes: 15, meal_type: 'high_tea', reason: 'Turns your available vegetables into a quick spicy snack.', used_ingredients: names.slice(0, 3), missing_items: ['Chaat Masala'] },
-    { title: 'Fresh Breakfast Skillet', time_minutes: 15, meal_type: 'breakfast', reason: 'A simple breakfast matched to the ingredients in your kitchen.', used_ingredients: names.slice(0, 4), missing_items: [] },
-  ]
-
-  const handleWhatCanICook = async (ingredientNames?: string[]) => {
+  const handleWhatCanICook = async (_ingredientNames?: string[]) => {
     setLoadingWhatCanICook(true)
     try {
       const res = await fetch('/api/kitchen/what-can-i-cook', {
@@ -527,15 +510,32 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
         body: JSON.stringify({ userId: userProfile.id || userProfile.user_id || 'default_user' }),
       })
       const data = await res.json()
-      const names = ingredientNames?.length ? ingredientNames : inventory.map((item) => item.ingredient_name)
-      setWhatCanICookSuggestions(data.suggestions?.length ? data.suggestions : buildKitchenSuggestions(names))
+      if (!res.ok) throw new Error(data.error || 'Could not match recipes')
+      setWhatCanICookSuggestions(data.suggestions || [])
     } catch (err) {
       console.error('What can I cook error:', err)
-      const names = ingredientNames?.length ? ingredientNames : inventory.map((item) => item.ingredient_name)
-      setWhatCanICookSuggestions(buildKitchenSuggestions(names))
+      setWhatCanICookSuggestions([])
     } finally {
       setLoadingWhatCanICook(false)
     }
+  }
+
+  const handlePlanMissingItems = async (suggestion: any) => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(9, 0, 0, 0)
+    const response = await fetch('/api/shopping-reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userProfile.id || userProfile.user_id || 'default_user',
+        recipe_id: suggestion.recipe_id,
+        missing_items: suggestion.missing_items,
+        remind_at: tomorrow.toISOString(),
+      }),
+    })
+    const data = await response.json()
+    setKitchenScanStatus(response.ok ? 'Missing items added to tomorrow’s Plan reminders.' : data.error || 'Could not add reminders.')
   }
 
   // Add Inventory Item
@@ -951,8 +951,8 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                           {item.description || 'Nutritious homestyle recipe with fresh ingredients.'}
                         </p>
                         <div className="mise-nutrition-row">
-                          <span className="mise-calorie-pill">🔥 {recipeNutrition(item).calories} kcal</span>
-                          <span className="mise-score-pill">★ {recipeNutrition(item).score}/10</span>
+                          <span className="mise-calorie-pill">🔥 {recipeNutrition(item).calories ? `${recipeNutrition(item).calories} kcal` : 'Nutrition pending'}</span>
+                          <span className="mise-score-pill">★ {recipeNutrition(item).score ? `${recipeNutrition(item).score}/10` : 'Not scored'}</span>
                         </div>
                       </div>
 
@@ -1378,6 +1378,9 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                         </div>
                         <h4 className="font-serif text-sm font-bold text-[#223129]">{item.title}</h4>
                         <p className="text-xs text-[#736e65] mt-1">{item.reason}</p>
+                        <span className="mt-2 inline-flex rounded-full bg-[#eaf8d5] px-2 py-1 text-[10px] font-black text-[#356a22]">
+                          {item.match_percent}% kitchen match
+                        </span>
 
                         {/* Used Ingredients */}
                         {item.used_ingredients && item.used_ingredients.length > 0 && (
@@ -1393,14 +1396,25 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                             ))}
                           </div>
                         )}
+                        {item.missing_items?.length > 0 && (
+                          <div className="mt-2.5 flex flex-wrap gap-1">
+                            <span className="text-[10px] font-semibold text-[#a73508]">Missing:</span>
+                            {item.missing_items.map((ing: string) => <span key={ing} className="rounded bg-[#fff1eb] px-1.5 py-0.5 text-[10px] font-medium text-[#a73508]">{ing}</span>)}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="mt-3 pt-2 border-t border-[#f0ece3] flex justify-end">
+                      <div className="mt-3 pt-2 border-t border-[#f0ece3] flex flex-wrap justify-end gap-2">
+                        {item.missing_items?.length > 0 && (
+                          <button type="button" onClick={() => handlePlanMissingItems(item)} className="rounded-xl border border-[#f4510b] px-3.5 py-1.5 text-xs font-bold text-[#f4510b] hover:bg-[#fff1eb]">
+                            Remind tomorrow
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
-                            handleSearchInternet(item.title)
-                            setActiveTab('home')
+                            const storedRecipe = recipes.find((recipe) => recipe.id === item.recipe_id)
+                            if (storedRecipe) setSelectedRecipeForPlan(storedRecipe)
                           }}
                           className="rounded-xl bg-[#223129] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#b25537] transition"
                         >
@@ -1542,8 +1556,8 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                           {rec.name}
                         </h4>
                         <div className="mise-nutrition-row">
-                          <span className="mise-calorie-pill">🔥 {recipeNutrition(rec).calories} kcal</span>
-                          <span className="mise-score-pill">★ {recipeNutrition(rec).score}/10</span>
+                          <span className="mise-calorie-pill">🔥 {recipeNutrition(rec).calories ? `${recipeNutrition(rec).calories} kcal` : 'Nutrition pending'}</span>
+                          <span className="mise-score-pill">★ {recipeNutrition(rec).score ? `${recipeNutrition(rec).score}/10` : 'Not scored'}</span>
                         </div>
                       </div>
 

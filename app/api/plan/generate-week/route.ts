@@ -29,41 +29,7 @@ export async function POST(req: NextRequest) {
     const createdPlans = []
 
     if (recipePool.length === 0) {
-      const starterRecipes = [
-        { id: 'default-poha', name: 'Poha', meal_type: 'breakfast', category: 'Breakfast', prep_time: 10, cook_time: 15, image_url: '/food-poha.jpg' },
-        { id: 'default-rajma-masala', name: 'Rajma Masala', meal_type: 'lunch', category: 'Lunch', prep_time: 15, cook_time: 35, image_url: '/food-rajma.jpg' },
-        { id: 'default-masala-chai-pakoras', name: 'Masala Chai & Pakoras', meal_type: 'high_tea', category: 'High Tea', prep_time: 10, cook_time: 20, image_url: '/food-chai-pakora.jpg' },
-        { id: 'default-palak-paneer', name: 'Palak Paneer', meal_type: 'dinner', category: 'Dinner', prep_time: 15, cook_time: 25, image_url: '/food-palak-paneer.jpg' },
-      ].map(recipe => ({
-        ...recipe,
-        title: recipe.name,
-        description: `A Moaka favorite for ${recipe.category.toLowerCase()}.`,
-        cuisine: 'Indian',
-        diet_type: 'Vegetarian',
-        difficulty: 'Easy',
-        prep_time_minutes: recipe.prep_time,
-        cook_time_minutes: recipe.cook_time,
-        total_time_minutes: recipe.prep_time + recipe.cook_time,
-        default_servings: 4,
-        servings: 4,
-        tips: '',
-        updated_at: new Date().toISOString(),
-      }))
-
-      const { data: seededRecipes, error: seedError } = await supabase
-        .from('recipes')
-        .upsert(starterRecipes)
-        .select('id, name, title, meal_type, category')
-
-      if (seedError || !seededRecipes?.length) {
-        return NextResponse.json({ error: seedError?.message || 'Could not prepare starter recipes.' }, { status: 500 })
-      }
-
-      recipePool = seededRecipes.map(recipe => ({
-        id: recipe.id,
-        name: recipe.name || recipe.title,
-        meal_type: (recipe.meal_type || recipe.category || 'dinner').toLowerCase(),
-      }))
+      return NextResponse.json({ error: 'No published recipes are available in Supabase.' }, { status: 503 })
     }
 
     // Generate 7 days of plans

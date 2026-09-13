@@ -11,10 +11,10 @@ async function getRecipes(): Promise<Recipe[]> {
       .select(`
         id, name, title, description, image_url, meal_type, category, cuisine, diet_type,
         prep_time_minutes, prep_time, cook_time_minutes, cook_time, total_time_minutes,
-        default_servings, servings, difficulty, tips, ingredients, instructions
+        default_servings, servings, difficulty, calories, nutrition_score, tips, ingredients, instructions
       `)
       .order('created_at', { ascending: false })
-      .limit(80)
+      .limit(100)
 
     if (error) {
       console.error('[Supabase Page] Recipe query failed:', error.message)
