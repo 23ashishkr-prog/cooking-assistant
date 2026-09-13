@@ -825,7 +825,7 @@ export function TomorrowPlanNightPrep({
           <div className="rounded-2xl border border-[#faede6] bg-[#fdfaf7] p-3.5 flex items-center gap-3 text-xs text-[#736e65]">
             <Sparkles className="size-4 text-[#df9776] shrink-0" />
             <p>
-              <strong>Why night prep matters:</strong> Beans soaked for 8+ hours cook in 15 minutes instead of 45, and paneer marinated overnight absorbs 3x more flavor. The midnight reminder ensures you don&apos;t wake up to an unprepared kitchen!
+              Tomorrow&apos;s preparation and ingredients will appear here after a meal is planned.
             </p>
           </div>
         </div>
