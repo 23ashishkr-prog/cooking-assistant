@@ -92,114 +92,60 @@ export function TomorrowPlanNightPrep({
     lunch: RecipeItem | null
     high_tea: RecipeItem | null
     dinner: RecipeItem | null
-  }>(() => {
-    // Check if plans exist for tomorrow
-    const tPlans = mealPlans.filter((p) => p.planned_date === tomorrowStr)
-    const bPlan = tPlans.find((p) => p.meal_type === 'breakfast')
-    const lPlan = tPlans.find((p) => p.meal_type === 'lunch')
-    const hPlan = tPlans.find((p) => p.meal_type === 'high_tea')
-    const dPlan = tPlans.find((p) => p.meal_type === 'dinner')
-
-    const findRec = (plan?: MealPlanItem, fallbackType?: string) => {
-      if (plan?.recipe_id) {
-        const found = recipes.find((r) => r.id === plan.recipe_id)
-        if (found) return found
-      }
-      return recipes.find((r) => r.meal_type === fallbackType) || recipes[0] || null
-    }
-
-    return {
-      breakfast: findRec(bPlan, 'breakfast'),
-      lunch: findRec(lPlan, 'lunch'),
-      high_tea: findRec(hPlan, 'high_tea'),
-      dinner: findRec(dPlan, 'dinner'),
-    }
-  })
+  }>({ breakfast: null, lunch: null, high_tea: null, dinner: null })
 
   // Synchronize when recipes or mealPlans load
   useEffect(() => {
-    if (recipes.length > 0) {
-      setTomorrowMeals((prev) => ({
-        breakfast: prev.breakfast || recipes.find((r) => r.meal_type === 'breakfast') || recipes[0] || null,
-        lunch: prev.lunch || recipes.find((r) => r.meal_type === 'lunch') || recipes[1] || recipes[0] || null,
-        high_tea: prev.high_tea || recipes.find((r) => r.meal_type === 'high_tea') || recipes[2] || recipes[0] || null,
-        dinner: prev.dinner || recipes.find((r) => r.meal_type === 'dinner') || recipes[3] || recipes[0] || null,
-      }))
+    const tomorrowPlans = mealPlans.filter((plan) => plan.planned_date === tomorrowStr)
+    const plannedRecipe = (slot: string) => {
+      const plan = tomorrowPlans.find((item) => item.meal_type === slot)
+      if (!plan) return null
+      return (plan.recipes as RecipeItem | undefined) || recipes.find((recipe) => recipe.id === plan.recipe_id) || null
     }
+    setTomorrowMeals({
+      breakfast: plannedRecipe('breakfast'),
+      lunch: plannedRecipe('lunch'),
+      high_tea: plannedRecipe('high_tea'),
+      dinner: plannedRecipe('dinner'),
+    })
   }, [recipes, mealPlans, tomorrowStr])
 
   // Active sub-tab inside this component
   const [subTab, setSubTab] = useState<'prep' | 'items' | 'plan'>('prep')
 
   // Night Prep Tasks State
-  const defaultNightTasks: NightPrepTask[] = useMemo(
-    () => [
-      {
-        id: 'task-soak-beans',
-        title: 'Soak Beans / Lentils in Warm Water',
-        description: 'Rajma/chickpeas need 8–10 hours soaking overnight to cook soft and digestible tomorrow.',
-        category: 'soak',
-        forMeal: 'lunch',
-        isDone: false,
-        urgent: true,
-        estimatedMinutes: 5,
-      },
-      {
-        id: 'task-marinate-paneer',
-        title: 'Marinate Paneer / Veggies & Chill',
-        description: 'Toss paneer or veggies in yogurt, roasted cumin & chili powder; seal in container in fridge.',
-        category: 'marinate',
-        forMeal: 'dinner',
-        isDone: false,
-        urgent: true,
-        estimatedMinutes: 10,
-      },
-      {
-        id: 'task-defrost-greens',
-        title: 'Transfer Frozen Peas & Herbs to Fridge',
-        description: 'Move frozen green peas, corn or stock from freezer to refrigerator lower shelf to thaw slowly.',
-        category: 'defrost',
-        forMeal: 'lunch',
-        isDone: false,
-        urgent: false,
-        estimatedMinutes: 2,
-      },
-      {
-        id: 'task-prep-breakfast',
-        title: 'Overnight Oats / Batter Check',
-        description: 'Assemble rolled oats with milk & chia seeds in a jar, or check fermented batter fermentation.',
-        category: 'ferment',
-        forMeal: 'breakfast',
-        isDone: false,
-        urgent: true,
-        estimatedMinutes: 5,
-      },
-    ],
-    []
-  )
+  const defaultNightTasks: NightPrepTask[] = useMemo(() => mealPlans
+    .filter((plan) => plan.planned_date === tomorrowStr)
+    .flatMap((plan) => (plan.tasks || []).map((task) => ({
+      id: task.id,
+      title: task.task_name,
+      description: task.description || `Prepare for tomorrow's ${plan.meal_type}.`,
+      category: 'custom' as const,
+      forMeal: plan.meal_type as NightPrepTask['forMeal'],
+      isDone: task.status === 'completed',
+      urgent: true,
+      estimatedMinutes: 10,
+    }))), [mealPlans, tomorrowStr])
 
-  const [nightTasks, setNightTasks] = useState<NightPrepTask[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('mise_night_prep_tasks')
-        if (saved) return JSON.parse(saved)
-      } catch (e) {
-        console.warn('Failed to parse night prep tasks', e)
-      }
-    }
-    return defaultNightTasks
-  })
+  const [nightTasks, setNightTasks] = useState<NightPrepTask[]>([])
+
+  useEffect(() => {
+    setNightTasks((current) => defaultNightTasks.map((task) => ({
+      ...task,
+      isDone: current.find((item) => item.id === task.id)?.isDone ?? task.isDone,
+    })))
+  }, [defaultNightTasks])
 
   // Save tasks to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('mise_night_prep_tasks', JSON.stringify(nightTasks))
+        localStorage.setItem(`moaka_night_prep_${tomorrowStr}`, JSON.stringify(nightTasks))
       } catch (e) {
         console.warn('Failed to save night prep tasks', e)
       }
     }
-  }, [nightTasks])
+  }, [nightTasks, tomorrowStr])
 
   // New task input state
   const [showAddTask, setShowAddTask] = useState(false)
@@ -208,44 +154,42 @@ export function TomorrowPlanNightPrep({
   const [newTaskMeal, setNewTaskMeal] = useState<'breakfast' | 'lunch' | 'high_tea' | 'dinner' | 'general'>('lunch')
 
   // Item Checklist for Tomorrow State
-  const defaultItems: TomorrowIngredient[] = useMemo(
-    () => [
-      { id: 'item-1', name: 'Rajma / Red Kidney Beans', amount: '250g', mealSlot: 'lunch', inPantry: true, checked: false },
-      { id: 'item-2', name: 'Fresh Paneer Block', amount: '250g', mealSlot: 'dinner', inPantry: true, checked: false },
-      { id: 'item-3', name: 'Basmati Long-Grain Rice', amount: '2 cups', mealSlot: 'lunch', inPantry: true, checked: false },
-      { id: 'item-4', name: 'Rolled Oats & Chia Seeds', amount: '1 cup', mealSlot: 'breakfast', inPantry: true, checked: false },
-      { id: 'item-5', name: 'Ripe Tomatoes & Onions', amount: '4 each', mealSlot: 'lunch', inPantry: true, checked: false },
-      { id: 'item-6', name: 'Ginger-Garlic Paste / Fresh Root', amount: '50g', mealSlot: 'dinner', inPantry: true, checked: false },
-      { id: 'item-7', name: 'Fresh Milk or Almond Milk', amount: '500ml', mealSlot: 'breakfast', inPantry: true, checked: false },
-      { id: 'item-8', name: 'Ghee or Cooking Butter', amount: '3 tbsp', mealSlot: 'dinner', inPantry: true, checked: false },
-      { id: 'item-9', name: 'Fresh Coriander / Cilantro', amount: '1 bunch', mealSlot: 'dinner', inPantry: false, checked: false },
-      { id: 'item-10', name: 'Cardamom & Chai Spices', amount: '10g', mealSlot: 'high_tea', inPantry: true, checked: false },
-    ],
-    []
-  )
+  const defaultItems: TomorrowIngredient[] = useMemo(() => {
+    const seen = new Set<string>()
+    return (Object.entries(tomorrowMeals) as [TomorrowIngredient['mealSlot'], RecipeItem | null][])
+      .flatMap(([mealSlot, recipe]) => (recipe?.ingredients || []).map((ingredient: any, index) => {
+        const name = String(ingredient?.name || ingredient?.ingredient_name || ingredient || '').trim()
+        return {
+          id: `${recipe?.id}-${index}`,
+          name,
+          amount: String(ingredient?.measure || ingredient?.quantity || 'as needed'),
+          mealSlot,
+          inPantry: false,
+          checked: false,
+        }
+      }))
+      .filter((item) => item.name && !seen.has(item.name.toLowerCase()) && seen.add(item.name.toLowerCase()))
+  }, [tomorrowMeals])
 
-  const [itemsChecklist, setItemsChecklist] = useState<TomorrowIngredient[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('mise_tomorrow_items')
-        if (saved) return JSON.parse(saved)
-      } catch (e) {
-        console.warn('Failed to parse tomorrow items', e)
-      }
-    }
-    return defaultItems
-  })
+  const [itemsChecklist, setItemsChecklist] = useState<TomorrowIngredient[]>([])
+
+  useEffect(() => {
+    setItemsChecklist((current) => defaultItems.map((item) => ({
+      ...item,
+      checked: current.find((saved) => saved.name.toLowerCase() === item.name.toLowerCase())?.checked || false,
+    })))
+  }, [defaultItems])
 
   // Save items to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('mise_tomorrow_items', JSON.stringify(itemsChecklist))
+        localStorage.setItem(`moaka_tomorrow_items_${tomorrowStr}`, JSON.stringify(itemsChecklist))
       } catch (e) {
         console.warn('Failed to save tomorrow items', e)
       }
     }
-  }, [itemsChecklist])
+  }, [itemsChecklist, tomorrowStr])
 
   // Sync availability to the actual inventory. This intentionally supports rollback.
   useEffect(() => {
