@@ -310,7 +310,15 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       })
       const data = await res.json()
       if (!res.ok || !data.success) throw new Error(data.error || 'Could not save preferences')
-      setProfileSaveStatus('Saved — recommendations and new plans are updated.')
+      const planRes = await fetch('/api/plan/generate-week', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const planData = await planRes.json()
+      if (!planRes.ok || !planData.success) throw new Error(planData.error || 'Preferences saved, but the meal plan could not be refreshed.')
+      await loadMealPlans()
+      setProfileSaveStatus('Saved — your complete week and tomorrow prep now match this profile.')
       window.setTimeout(() => setProfileSaveStatus(null), 4000)
     } catch (error: any) {
       setProfileSaveStatus(error?.message || 'Could not save preferences.')
@@ -1016,7 +1024,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
             )}
 
             <TomorrowPlanNightPrep
-              recipes={recipes}
+              recipes={eligibleRecipes}
               mealPlans={mealPlans}
               inventory={inventory}
               onRefreshPlans={loadMealPlans}
@@ -1030,6 +1038,20 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
               onRemoveInventoryItem={handleDeleteInventory}
               onStartCooking={(rec) => handleStartCooking(rec)}
               onSelectRecipeForPlan={(rec) => setSelectedRecipeForPlan(rec)}
+              onSwapTomorrowMeal={async (slot, recipe, plannedDate, plannedTime) => {
+                const res = await fetch('/api/meal-plans', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    recipe_id: recipe.id,
+                    meal_type: slot,
+                    planned_date: plannedDate,
+                    planned_time: plannedTime,
+                  }),
+                })
+                if (!res.ok) throw new Error('Could not save the meal change.')
+                await loadMealPlans()
+              }}
             />
 
             {/* List of Scheduled Meals & Preparation Tasks */}

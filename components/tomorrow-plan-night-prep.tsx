@@ -54,6 +54,7 @@ interface TomorrowPlanNightPrepProps {
   onRemoveInventoryItem?: (id: string) => void
   onStartCooking?: (recipe: RecipeItem) => void
   onSelectRecipeForPlan?: (recipe: RecipeItem) => void
+  onSwapTomorrowMeal?: (slot: 'breakfast' | 'lunch' | 'high_tea' | 'dinner', recipe: RecipeItem, plannedDate: string, plannedTime: string) => Promise<void>
 }
 
 export function TomorrowPlanNightPrep({
@@ -65,6 +66,7 @@ export function TomorrowPlanNightPrep({
   onRemoveInventoryItem,
   onStartCooking,
   onSelectRecipeForPlan,
+  onSwapTomorrowMeal,
 }: TomorrowPlanNightPrepProps) {
   // Use UTC and an explicit locale so the server and browser render the same date.
   const tomorrowDate = useMemo(() => {
@@ -432,8 +434,14 @@ export function TomorrowPlanNightPrep({
   }
 
   // Change a tomorrow meal slot
-  const handleSwapTomorrowMeal = (slot: 'breakfast' | 'lunch' | 'high_tea' | 'dinner', recipe: RecipeItem) => {
+  const handleSwapTomorrowMeal = async (slot: 'breakfast' | 'lunch' | 'high_tea' | 'dinner', recipe: RecipeItem, plannedTime: string) => {
     setTomorrowMeals((prev) => ({ ...prev, [slot]: recipe }))
+    try {
+      await onSwapTomorrowMeal?.(slot, recipe, tomorrowStr, plannedTime)
+    } catch (error) {
+      console.warn('Could not save tomorrow meal swap:', error)
+      onRefreshPlans?.()
+    }
   }
 
   return (
@@ -1072,7 +1080,7 @@ export function TomorrowPlanNightPrep({
                       value={recipe.id}
                       onChange={(e) => {
                         const nextRec = recipes.find((r) => r.id === e.target.value)
-                        if (nextRec) handleSwapTomorrowMeal(key, nextRec)
+                        if (nextRec) handleSwapTomorrowMeal(key, nextRec, key === 'breakfast' ? '08:30' : key === 'lunch' ? '13:00' : key === 'high_tea' ? '17:00' : '20:30')
                       }}
                       className="text-[10px] rounded-lg border border-[#ded9cf] bg-[#fbf9f5] px-1.5 py-1 text-[#555047] focus:outline-none max-w-[100px] truncate"
                     >
