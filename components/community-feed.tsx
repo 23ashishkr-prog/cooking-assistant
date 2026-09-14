@@ -103,8 +103,9 @@ export function CommunityFeed({ profile, preferences, onCook }: { profile: any; 
         )
       })}
 
-      {composerOpen && <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#160e20]/70 p-0 backdrop-blur-sm sm:items-center sm:p-6"><div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] bg-[#fbf9f5] p-5 shadow-2xl sm:rounded-[2rem] sm:p-7">
-        <div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-widest text-[#f4510b]">New community recipe</p><h2 className="font-serif text-2xl font-black">Share your kitchen win</h2></div><button type="button" onClick={() => setComposerOpen(false)} className="rounded-full bg-white p-2"><X className="size-5" /></button></div>
+      {composerOpen && <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-[#160e20]/70 px-3 py-4 backdrop-blur-sm sm:items-center sm:p-6"><div role="dialog" aria-modal="true" aria-label="Post a community recipe" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[1.75rem] bg-[#fbf9f5] shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:rounded-[2rem]">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#ece6dc] bg-[#fbf9f5]/95 px-5 py-4 backdrop-blur sm:px-7"><div><p className="text-[10px] font-black uppercase tracking-widest text-[#f4510b]">New community recipe</p><h2 className="font-serif text-xl font-black sm:text-2xl">Share your kitchen win</h2></div><button type="button" onClick={() => setComposerOpen(false)} className="rounded-full bg-white p-2 shadow-sm"><X className="size-5" /></button></div>
+        <div className="p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:p-7">
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <input value={form.name} onChange={e => setForm({...form,name:e.target.value})} placeholder="Recipe name *" className="rounded-xl border bg-white p-3 text-sm" />
           <input value={form.caption} onChange={e => setForm({...form,caption:e.target.value})} placeholder="Tell your story" className="rounded-xl border bg-white p-3 text-sm" />
@@ -115,10 +116,11 @@ export function CommunityFeed({ profile, preferences, onCook }: { profile: any; 
           <textarea value={form.ingredients} onChange={e => setForm({...form,ingredients:e.target.value})} placeholder="Ingredients, separated by commas *" className="min-h-24 rounded-xl border bg-white p-3 text-sm sm:col-span-2" />
           <textarea value={form.steps} onChange={e => setForm({...form,steps:e.target.value})} placeholder="Cooking steps, one per line *" className="min-h-28 rounded-xl border bg-white p-3 text-sm sm:col-span-2" />
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3"><button type="button" onClick={() => photoInput.current?.click()} className="flex items-center justify-center gap-2 rounded-2xl border bg-white p-3 text-xs font-black"><Camera className="size-4 text-[#f4510b]" /> Take/upload photo</button><button type="button" onClick={() => videoInput.current?.click()} className="flex items-center justify-center gap-2 rounded-2xl border bg-white p-3 text-xs font-black"><Video className="size-4 text-[#f4510b]" /> Upload short video</button></div>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"><button type="button" onClick={() => photoInput.current?.click()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border bg-white px-3 py-3 text-center text-xs font-black"><Camera className="size-4 shrink-0 text-[#f4510b]" /> <span>Take/upload photo</span></button><button type="button" onClick={() => videoInput.current?.click()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border bg-white px-3 py-3 text-center text-xs font-black"><Video className="size-4 shrink-0 text-[#f4510b]" /> <span>Upload short video</span></button></div>
         <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden onChange={e => chooseMedia(e.target.files?.[0])} /><input ref={videoInput} type="file" accept="video/*" capture="environment" hidden onChange={e => chooseMedia(e.target.files?.[0])} />
         {preview && <div className="mt-3 overflow-hidden rounded-2xl bg-black">{media?.type.startsWith('video/') ? <video src={preview} controls className="max-h-64 w-full object-contain" /> : <img src={preview} alt="Recipe preview" className="max-h-64 w-full object-cover" />}</div>}
         <button type="button" onClick={publish} disabled={saving || !form.name || !form.ingredients || !form.steps} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#f4510b] p-4 text-sm font-black text-white disabled:opacity-50">{saving ? <LoaderCircle className="size-5 animate-spin" /> : <Send className="size-5" />} Publish recipe</button>
+        </div>
       </div></div>}
     </div>
   )

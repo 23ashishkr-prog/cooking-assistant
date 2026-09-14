@@ -558,13 +558,13 @@ export function TomorrowPlanNightPrep({
       )}
 
       {/* 2. Sub-tab Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f0ece3] pb-2">
-        <div className="flex items-center gap-1.5">
+      <div className="flex flex-col gap-3 border-b border-[#f0ece3] pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-1.5">
           <button
             type="button"
             id="tab-night-prep-tasks"
             onClick={() => setSubTab('prep')}
-            className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition sm:min-h-0 sm:w-auto sm:justify-start sm:px-3.5 sm:py-1.5 ${
               subTab === 'prep'
                 ? 'bg-[#223129] text-white shadow-xs'
                 : 'bg-[#f0ece3] text-[#555047] hover:bg-[#e4ded3]'
@@ -583,7 +583,7 @@ export function TomorrowPlanNightPrep({
             type="button"
             id="tab-item-checklist"
             onClick={() => setSubTab('items')}
-            className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition sm:min-h-0 sm:w-auto sm:justify-start sm:px-3.5 sm:py-1.5 ${
               subTab === 'items'
                 ? 'bg-[#223129] text-white shadow-xs'
                 : 'bg-[#f0ece3] text-[#555047] hover:bg-[#e4ded3]'
@@ -606,7 +606,7 @@ export function TomorrowPlanNightPrep({
             type="button"
             id="tab-tomorrow-plan"
             onClick={() => setSubTab('plan')}
-            className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition sm:min-h-0 sm:w-auto sm:justify-start sm:px-3.5 sm:py-1.5 ${
               subTab === 'plan'
                 ? 'bg-[#223129] text-white shadow-xs'
                 : 'bg-[#f0ece3] text-[#555047] hover:bg-[#e4ded3]'
@@ -619,7 +619,7 @@ export function TomorrowPlanNightPrep({
 
         {/* Quick Batch Action */}
         {subTab === 'prep' && (
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
             <button
               type="button"
               onClick={() => setShowAddTask((prev) => !prev)}
@@ -639,11 +639,11 @@ export function TomorrowPlanNightPrep({
         )}
 
         {subTab === 'items' && (
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
             <button
               type="button"
               onClick={handleMarkAllItemsReady}
-              className="text-xs text-[#2e7d32] font-semibold hover:underline"
+              className="min-h-10 rounded-xl border border-[#c9dfcf] bg-[#f4faf5] px-3 text-xs font-semibold text-[#2e7d32] transition hover:bg-[#e8f5eb] sm:min-h-0 sm:border-0 sm:bg-transparent sm:px-0 sm:hover:bg-transparent sm:hover:underline"
             >
               Mark All Have ✓
             </button>
