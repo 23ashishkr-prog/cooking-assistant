@@ -37,7 +37,7 @@ import {
 import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
-import { cuisineFallbackImage, recipeContainsExcludedMeat } from '@/lib/recipe-personalization'
+import { cuisineFallbackImage, recipeContainsExcludedMeat, recipeMatchesDietPreference } from '@/lib/recipe-personalization'
 
 export type RecipeItem = {
   id: string
@@ -187,7 +187,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     preferred_cooking_time: 30,
   })
   const [foodPreferences, setFoodPreferences] = useState<any>({
-    diet_type: 'Vegetarian / Flexible',
+    diet_type: 'Non-Vegetarian',
     spice_level: 'Medium',
     cuisines: ['North Indian', 'South Indian', 'Italian', 'Asian'],
     allergies: [],
@@ -325,8 +325,11 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   }, [])
 
   const eligibleRecipes = useMemo(
-    () => recipes.filter((recipe) => !recipeContainsExcludedMeat(recipe, foodPreferences.excluded_meats || [])),
-    [recipes, foodPreferences.excluded_meats],
+    () => recipes.filter((recipe) =>
+      recipeMatchesDietPreference(recipe, foodPreferences.diet_type)
+      && !recipeContainsExcludedMeat(recipe, foodPreferences.excluded_meats || []),
+    ),
+    [recipes, foodPreferences.diet_type, foodPreferences.excluded_meats],
   )
 
   // Filtered recipes for Home
@@ -1645,9 +1648,24 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
               <div className="rounded-2xl border border-[#ded9cf] bg-white p-5 shadow-xs space-y-3">
                 <h3 className="font-serif text-base font-bold text-[#223129]">Dietary Persona</h3>
                 <div className="space-y-2 text-xs">
-                  <div className="flex justify-between py-1 border-b border-[#f0ece3]">
-                    <span className="text-[#736e65]">Diet:</span>
-                    <span className="font-bold text-[#223129]">{foodPreferences.diet_type}</span>
+                  <div className="border-b border-[#f0ece3] pb-3">
+                    <span className="text-[#736e65]">Food choice</span>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {['Vegetarian', 'Non-Vegetarian'].map((diet) => {
+                        const selected = foodPreferences.diet_type === diet
+                        return (
+                          <button
+                            key={diet}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => setFoodPreferences((current: any) => ({ ...current, diet_type: diet }))}
+                            className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${selected ? 'border-[#f34a0a] bg-[#fff0e9] text-[#b73708] shadow-sm' : 'border-[#ded9cf] bg-[#fbf9f5] text-[#536158] hover:border-[#f34a0a]'}`}
+                          >
+                            {diet === 'Vegetarian' ? '🥬 Vegetarian' : '🍗 Non-Vegetarian'}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                   <div className="flex justify-between py-1 border-b border-[#f0ece3]">
                     <span className="text-[#736e65]">Spice Level:</span>
@@ -1666,30 +1684,34 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                     </span>
                   </div>
                 </div>
-                <div className="border-t border-[#f0ece3] pt-3">
-                  <p className="text-xs font-bold text-[#223129]">Meat preferences</p>
-                  <p className="mt-0.5 text-[11px] text-[#736e65]">Turn off anything you do not eat. Matching recipes disappear immediately.</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {['Pork', 'Beef', 'Lamb/Mutton', 'Chicken', 'Seafood'].map((meat) => {
-                      const excluded = (foodPreferences.excluded_meats || []).includes(meat)
-                      return (
-                        <button
-                          key={meat}
-                          type="button"
-                          aria-pressed={excluded}
-                          onClick={() => setFoodPreferences((current: any) => ({
-                            ...current,
-                            excluded_meats: excluded
-                              ? (current.excluded_meats || []).filter((item: string) => item !== meat)
-                              : [...(current.excluded_meats || []), meat],
-                          }))}
-                          className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${excluded ? 'border-[#b25537] bg-[#faede6] text-[#8c3f29]' : 'border-[#ded9cf] bg-[#fbf9f5] text-[#536158] hover:border-[#b25537]'}`}
-                        >
-                          {excluded ? `No ${meat}` : meat}
-                        </button>
-                      )
-                    })}
+                {foodPreferences.diet_type === 'Non-Vegetarian' && (
+                  <div className="border-t border-[#f0ece3] pt-3">
+                    <p className="text-xs font-bold text-[#223129]">Meat preferences</p>
+                    <p className="mt-0.5 text-[11px] text-[#736e65]">Select the meats you eat. Recipes containing unselected meats will not be suggested.</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {['Pork', 'Beef', 'Lamb/Mutton', 'Chicken', 'Seafood'].map((meat) => {
+                        const allowed = !(foodPreferences.excluded_meats || []).includes(meat)
+                        return (
+                          <button
+                            key={meat}
+                            type="button"
+                            aria-pressed={allowed}
+                            onClick={() => setFoodPreferences((current: any) => ({
+                              ...current,
+                              excluded_meats: allowed
+                                ? [...(current.excluded_meats || []), meat]
+                                : (current.excluded_meats || []).filter((item: string) => item !== meat),
+                            }))}
+                            className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${allowed ? 'border-[#f34a0a] bg-[#fff0e9] text-[#b73708]' : 'border-[#ded9cf] bg-[#fbf9f5] text-[#8a857c]'}`}
+                          >
+                            {allowed ? `✓ ${meat}` : meat}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
+                )}
+                <div>
                   <button
                     type="button"
                     onClick={saveFoodPreferences}

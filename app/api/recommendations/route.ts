@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText, recipeContainsExcludedMeat } from '@/lib/recipe-personalization'
+import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText, recipeContainsExcludedMeat, recipeMatchesDietPreference } from '@/lib/recipe-personalization'
 
 export async function GET(req: NextRequest) {
   try {
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
     ].map((value: string) => value.toLowerCase())
     const selectedDiet = String(userPref?.diet_type || '').toLowerCase()
     const filtered = normalized.filter(recipe => {
-      const dietMatches = !selectedDiet || selectedDiet.includes('flexible') || recipe.diet_type.toLowerCase() === selectedDiet
+      const dietMatches = recipeMatchesDietPreference(recipe, selectedDiet)
       const cuisineMatches = cuisineMatchesPreference(recipe.cuisine, preferredCuisines)
       const timeMatches = !userPref?.max_cook_time || recipe.total_time <= userPref.max_cook_time
       const recipeIngredients = ingredientText(recipe)

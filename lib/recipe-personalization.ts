@@ -51,6 +51,21 @@ export function recipeContainsExcludedMeat(
   })
 }
 
+export function recipeMatchesDietPreference(
+  recipe: { diet_type?: unknown },
+  preference: unknown,
+) {
+  const selected = String(preference || '').trim().toLowerCase()
+  const recipeDiet = String(recipe.diet_type || '').trim().toLowerCase()
+
+  if (!selected || selected.includes('flexible')) return true
+  if (selected === 'vegetarian') {
+    return recipeDiet === 'vegetarian' || recipeDiet === 'vegan'
+  }
+  if (selected === 'non-vegetarian') return recipeDiet === 'non-vegetarian'
+  return recipeDiet === selected
+}
+
 export function favoriteIngredientScore(recipe: { ingredients?: unknown }, favorites: unknown[] = []) {
   const haystack = ingredientText(recipe)
   return favorites.reduce<number>((score, favorite) => {

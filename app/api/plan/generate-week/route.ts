@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText, recipeContainsExcludedMeat } from '@/lib/recipe-personalization'
+import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText, recipeContainsExcludedMeat, recipeMatchesDietPreference } from '@/lib/recipe-personalization'
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const preferredCuisines = userPref?.cuisines || []
     const blocked = [...(userPref?.allergies || []), ...(userPref?.dislikes || []), ...(userPref?.avoided_ingredients || [])].map((value: string) => value.toLowerCase())
     const eligibleRecipes = (recipes || []).filter((recipe: any) => {
-      const dietMatches = !selectedDiet || selectedDiet.includes('flexible') || String(recipe.diet_type || '').toLowerCase() === selectedDiet
+      const dietMatches = recipeMatchesDietPreference(recipe, selectedDiet)
       const cuisineMatches = cuisineMatchesPreference(recipe.cuisine, preferredCuisines)
       const timeMatches = !userPref?.max_cook_time || recipe.total_time_minutes <= userPref.max_cook_time
       const safe = !blocked.some((ingredient: string) => ingredientText(recipe).includes(ingredient))
