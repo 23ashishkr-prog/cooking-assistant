@@ -12,7 +12,11 @@ export async function GET(req: NextRequest) {
       .from('meal_plans')
       .select(`
         id, user_id, recipe_id, meal_type, planned_date, planned_time, servings, status, created_at,
-        recipes (id, name, title, description, image_url, prep_time_minutes, cook_time_minutes, difficulty, meal_type)
+        recipes (
+          id, name, title, description, image_url, meal_type, category, cuisine, diet_type,
+          prep_time_minutes, cook_time_minutes, total_time_minutes, difficulty,
+          calories, nutrition_score, ingredients
+        )
       `)
       .eq('user_id', userId)
       .order('planned_date', { ascending: true })
@@ -85,10 +89,10 @@ export async function POST(req: NextRequest) {
     const cookMinutes = recipe.cook_time_minutes || 25
     const prepMinutes = recipe.prep_time_minutes || 15
 
-    // 2. Insert into meal_plans
+    // 2. Create or replace this user's meal slot. A slot is intentionally unique.
     const { data: newPlan, error: planError } = await supabase
       .from('meal_plans')
-      .insert({
+      .upsert({
         user_id,
         recipe_id,
         meal_type,
@@ -96,7 +100,7 @@ export async function POST(req: NextRequest) {
         planned_time,
         servings,
         status: 'planned',
-      })
+      }, { onConflict: 'user_id,planned_date,meal_type' })
       .select()
       .single()
 
@@ -104,6 +108,12 @@ export async function POST(req: NextRequest) {
       console.error('[Create Plan Error]:', planError)
       return NextResponse.json({ error: planError?.message || 'Failed to create plan' }, { status: 500 })
     }
+
+    // Rebuilding a replaced slot must not leave stale or duplicate prep records.
+    await Promise.all([
+      supabase.from('user_preparation_tasks').delete().eq('meal_plan_id', newPlan.id),
+      supabase.from('notifications').delete().eq('meal_plan_id', newPlan.id),
+    ])
 
     // 3. Automatic Preparation Calculation
     // Parse planned_date and planned_time to calculate exact scheduled_at timestamps

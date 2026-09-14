@@ -37,7 +37,7 @@ import {
 import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
-import { cuisineFallbackImage } from '@/lib/recipe-personalization'
+import { cuisineFallbackImage, recipeContainsExcludedMeat } from '@/lib/recipe-personalization'
 
 export type RecipeItem = {
   id: string
@@ -192,7 +192,9 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     cuisines: ['North Indian', 'South Indian', 'Italian', 'Asian'],
     allergies: [],
     favorite_ingredients: ['Paneer', 'Tomatoes', 'Basmati Rice', 'Garlic'],
+    excluded_meats: [],
   })
+  const [profileSaveStatus, setProfileSaveStatus] = useState<string | null>(null)
 
   // Admin Recipe Creation Form
   const [adminName, setAdminName] = useState('')
@@ -298,6 +300,23 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     }
   }
 
+  const saveFoodPreferences = async () => {
+    setProfileSaveStatus('Saving preferences…')
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferences: foodPreferences }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not save preferences')
+      setProfileSaveStatus('Saved — recommendations and new plans are updated.')
+      window.setTimeout(() => setProfileSaveStatus(null), 4000)
+    } catch (error: any) {
+      setProfileSaveStatus(error?.message || 'Could not save preferences.')
+    }
+  }
+
   useEffect(() => {
     loadMealPlans()
     loadInventory()
@@ -305,9 +324,14 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     loadProfile()
   }, [])
 
+  const eligibleRecipes = useMemo(
+    () => recipes.filter((recipe) => !recipeContainsExcludedMeat(recipe, foodPreferences.excluded_meats || [])),
+    [recipes, foodPreferences.excluded_meats],
+  )
+
   // Filtered recipes for Home
   const filteredRecipes = useMemo(() => {
-    let list = recipes
+    let list = eligibleRecipes
     if (homeFilter !== 'all') {
       list = list.filter((r) => r.meal_type === homeFilter)
     }
@@ -321,13 +345,13 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       )
     }
     return list
-  }, [recipes, homeFilter, searchQuery])
+  }, [eligibleRecipes, homeFilter, searchQuery])
 
   // Contextual meal slot items for Section 16 & 17
-  const breakfastSlot = useMemo(() => recipes.find((r) => r.meal_type === 'breakfast') || recipes[0], [recipes])
-  const lunchSlot = useMemo(() => recipes.find((r) => r.meal_type === 'lunch') || recipes[1] || recipes[0], [recipes])
-  const highTeaSlot = useMemo(() => recipes.find((r) => r.meal_type === 'high_tea') || recipes[2] || recipes[0], [recipes])
-  const dinnerSlot = useMemo(() => recipes.find((r) => r.meal_type === 'dinner') || recipes[3] || recipes[0], [recipes])
+  const breakfastSlot = useMemo(() => eligibleRecipes.find((r) => r.meal_type === 'breakfast') || eligibleRecipes[0], [eligibleRecipes])
+  const lunchSlot = useMemo(() => eligibleRecipes.find((r) => r.meal_type === 'lunch') || eligibleRecipes[1] || eligibleRecipes[0], [eligibleRecipes])
+  const highTeaSlot = useMemo(() => eligibleRecipes.find((r) => r.meal_type === 'high_tea') || eligibleRecipes[2] || eligibleRecipes[0], [eligibleRecipes])
+  const dinnerSlot = useMemo(() => eligibleRecipes.find((r) => r.meal_type === 'dinner') || eligibleRecipes[3] || eligibleRecipes[0], [eligibleRecipes])
 
   // Contextual priority slot
   const priorityMeal = useMemo(() => {
@@ -907,8 +931,8 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                           {item.description || 'Nutritious homestyle recipe with fresh ingredients.'}
                         </p>
                         <div className="mise-nutrition-row">
-                          <span className="mise-calorie-pill">🔥 {recipeNutrition(item).calories ? `${recipeNutrition(item).calories} kcal` : 'Nutrition pending'}</span>
-                          <span className="mise-score-pill">★ {recipeNutrition(item).score ? `${recipeNutrition(item).score}/10` : 'Not scored'}</span>
+                          <span className="mise-calorie-pill" title="Estimated per serving from recipe ingredients">🔥 ≈ {recipeNutrition(item).calories ? `${recipeNutrition(item).calories} kcal` : 'calculating'}</span>
+                          <span className="mise-score-pill" title="Estimated nutrition score">★ {recipeNutrition(item).score ? `${recipeNutrition(item).score}/10` : 'calculating'}</span>
                         </div>
                       </div>
 
@@ -1479,7 +1503,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
             <div>
               <h3 className="font-serif text-base font-bold text-[#223129] mb-3">Cook Again</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {recipes.slice(0, 6).map((rec) => {
+                {eligibleRecipes.slice(0, 6).map((rec) => {
                   const cookedTimes = cookCounts[rec.id] || (rec.id.includes('paneer') ? 5 : rec.id.includes('dal') ? 3 : 1)
                   return (
                     <div
@@ -1512,8 +1536,8 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                           {rec.name}
                         </h4>
                         <div className="mise-nutrition-row">
-                          <span className="mise-calorie-pill">🔥 {recipeNutrition(rec).calories ? `${recipeNutrition(rec).calories} kcal` : 'Nutrition pending'}</span>
-                          <span className="mise-score-pill">★ {recipeNutrition(rec).score ? `${recipeNutrition(rec).score}/10` : 'Not scored'}</span>
+                          <span className="mise-calorie-pill" title="Estimated per serving from recipe ingredients">🔥 ≈ {recipeNutrition(rec).calories ? `${recipeNutrition(rec).calories} kcal` : 'calculating'}</span>
+                          <span className="mise-score-pill" title="Estimated nutrition score">★ {recipeNutrition(rec).score ? `${recipeNutrition(rec).score}/10` : 'calculating'}</span>
                         </div>
                       </div>
 
@@ -1641,6 +1665,39 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                       {(foodPreferences.favorite_ingredients || []).join(', ')}
                     </span>
                   </div>
+                </div>
+                <div className="border-t border-[#f0ece3] pt-3">
+                  <p className="text-xs font-bold text-[#223129]">Meat preferences</p>
+                  <p className="mt-0.5 text-[11px] text-[#736e65]">Turn off anything you do not eat. Matching recipes disappear immediately.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {['Pork', 'Beef', 'Lamb/Mutton', 'Chicken', 'Seafood'].map((meat) => {
+                      const excluded = (foodPreferences.excluded_meats || []).includes(meat)
+                      return (
+                        <button
+                          key={meat}
+                          type="button"
+                          aria-pressed={excluded}
+                          onClick={() => setFoodPreferences((current: any) => ({
+                            ...current,
+                            excluded_meats: excluded
+                              ? (current.excluded_meats || []).filter((item: string) => item !== meat)
+                              : [...(current.excluded_meats || []), meat],
+                          }))}
+                          className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${excluded ? 'border-[#b25537] bg-[#faede6] text-[#8c3f29]' : 'border-[#ded9cf] bg-[#fbf9f5] text-[#536158] hover:border-[#b25537]'}`}
+                        >
+                          {excluded ? `No ${meat}` : meat}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={saveFoodPreferences}
+                    className="mt-3 w-full rounded-xl bg-[#f34a0a] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#d83f05]"
+                  >
+                    Save food preferences
+                  </button>
+                  {profileSaveStatus && <p className="mt-2 text-[11px] font-semibold text-[#536158]">{profileSaveStatus}</p>}
                 </div>
               </div>
             </div>

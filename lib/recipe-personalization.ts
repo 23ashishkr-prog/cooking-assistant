@@ -26,6 +26,31 @@ export function ingredientText(recipe: { ingredients?: unknown }) {
   return JSON.stringify(recipe.ingredients || []).toLowerCase()
 }
 
+export function recipeContainsExcludedMeat(
+  recipe: { name?: unknown; title?: unknown; diet_type?: unknown; ingredients?: unknown },
+  excludedMeats: unknown[] = [],
+) {
+  const haystack = [
+    recipe.name,
+    recipe.title,
+    recipe.diet_type,
+    ingredientText(recipe),
+  ].join(' ').toLowerCase()
+
+  return excludedMeats.some((meat) => {
+    const value = String(meat || '').trim().toLowerCase()
+    if (!value) return false
+    const aliases: Record<string, string[]> = {
+      pork: ['pork', 'bacon', 'ham', 'prosciutto', 'pepperoni', 'sausage'],
+      beef: ['beef', 'steak', 'veal'],
+      'lamb/mutton': ['lamb', 'mutton'],
+      chicken: ['chicken'],
+      seafood: ['seafood', 'fish', 'prawn', 'shrimp', 'salmon', 'tuna', 'crab', 'lobster'],
+    }
+    return (aliases[value] || [value]).some((term) => haystack.includes(term))
+  })
+}
+
 export function favoriteIngredientScore(recipe: { ingredients?: unknown }, favorites: unknown[] = []) {
   const haystack = ingredientText(recipe)
   return favorites.reduce<number>((score, favorite) => {

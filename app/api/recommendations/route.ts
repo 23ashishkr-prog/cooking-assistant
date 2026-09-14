@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText } from '@/lib/recipe-personalization'
+import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText, recipeContainsExcludedMeat } from '@/lib/recipe-personalization'
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       .select(`
         id, name, title, description, meal_type, category, cuisine, diet_type, difficulty,
         prep_time_minutes, prep_time, cook_time_minutes, cook_time, total_time_minutes,
-        default_servings, servings, image_url, tips, tags, ingredients
+        default_servings, servings, image_url, calories, nutrition_score, tips, tags, ingredients
       `)
       .order('created_at', { ascending: false })
 
@@ -48,6 +48,8 @@ export async function GET(req: NextRequest) {
       total_time: r.total_time_minutes || (r.prep_time_minutes || 15) + (r.cook_time_minutes || 20),
       servings: r.default_servings || r.servings || 4,
       image_url: r.image_url,
+      calories: r.calories,
+      nutrition_score: r.nutrition_score,
       tips: r.tips,
       ingredients: r.ingredients || [],
     }))
@@ -65,7 +67,8 @@ export async function GET(req: NextRequest) {
       const timeMatches = !userPref?.max_cook_time || recipe.total_time <= userPref.max_cook_time
       const recipeIngredients = ingredientText(recipe)
       const safeForUser = !blockedIngredients.some((ingredient: string) => recipeIngredients.includes(ingredient))
-      return dietMatches && cuisineMatches && timeMatches && safeForUser
+      const allowedMeat = !recipeContainsExcludedMeat(recipe, userPref?.excluded_meats || [])
+      return dietMatches && cuisineMatches && timeMatches && safeForUser && allowedMeat
     })
     const favorites = userPref?.favorite_ingredients || []
     const personalized = [...filtered].sort((a, b) => favoriteIngredientScore(b, favorites) - favoriteIngredientScore(a, favorites))

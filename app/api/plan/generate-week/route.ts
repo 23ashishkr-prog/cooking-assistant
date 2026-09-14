@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText } from '@/lib/recipe-personalization'
+import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText, recipeContainsExcludedMeat } from '@/lib/recipe-personalization'
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
       const cuisineMatches = cuisineMatchesPreference(recipe.cuisine, preferredCuisines)
       const timeMatches = !userPref?.max_cook_time || recipe.total_time_minutes <= userPref.max_cook_time
       const safe = !blocked.some((ingredient: string) => ingredientText(recipe).includes(ingredient))
-      return dietMatches && cuisineMatches && timeMatches && safe
+      const allowedMeat = !recipeContainsExcludedMeat(recipe, userPref?.excluded_meats || [])
+      return dietMatches && cuisineMatches && timeMatches && safe && allowedMeat
     })
     const favorites = userPref?.favorite_ingredients || []
     const recipePool = [...eligibleRecipes]
@@ -89,7 +90,26 @@ export async function POST(req: NextRequest) {
             totalMealsCreated: createdPlans.length,
           }, { status: 500 })
         }
-        if (newPlan) createdPlans.push(newPlan)
+        if (newPlan) {
+          createdPlans.push(newPlan)
+          const [hour, minute] = slot.time.split(':').map(Number)
+          const readyAt = new Date(`${dateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`)
+          const prepMinutes = Number((recipes || []).find((recipe: any) => recipe.id === chosen.id)?.prep_time_minutes || 15)
+          const cookMinutes = Number((recipes || []).find((recipe: any) => recipe.id === chosen.id)?.cook_time_minutes || 25)
+          const scheduledAt = new Date(readyAt.getTime() - (prepMinutes + cookMinutes) * 60_000)
+          await supabase.from('user_preparation_tasks').delete().eq('meal_plan_id', newPlan.id)
+          const { error: taskError } = await supabase.from('user_preparation_tasks').insert({
+            user_id: userId,
+            meal_plan_id: newPlan.id,
+            task_name: 'Mise en place',
+            description: `Gather and prepare ingredients for ${chosen.name}`,
+            scheduled_at: scheduledAt.toISOString(),
+            status: 'pending',
+          })
+          if (taskError) {
+            console.error('[Generate Week Prep Task Error]:', taskError)
+          }
+        }
       }
     }
 
