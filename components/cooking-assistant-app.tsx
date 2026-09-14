@@ -37,6 +37,7 @@ import {
 import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
+import { CommunityFeed } from './community-feed'
 import { cuisineFallbackImage, recipeContainsExcludedMeat, recipeMatchesDietPreference } from '@/lib/recipe-personalization'
 
 export type RecipeItem = {
@@ -96,7 +97,7 @@ export type MealPlanItem = {
   }[]
 }
 
-export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'favorites' | 'profile'
+export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'favorites' | 'profile' | 'community'
 
 const QUICK_SEARCHES = [
   'Authentic Tonkotsu Ramen',
@@ -787,12 +788,11 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setActiveTab('kitchen')}
+              onClick={() => setActiveTab('community')}
               className="flex items-center gap-1.5 rounded-xl border border-[#ded9cf] bg-white px-3 py-1.5 text-xs font-semibold text-[#555047] hover:border-[#b25537] hover:text-[#b25537] transition shadow-xs"
             >
-              <Sparkles className="size-3.5 text-[#b25537]" />
-              <span className="hidden sm:inline">What Can I Cook?</span>
-              <span className="sm:hidden">Pantry</span>
+              <Users className="size-3.5 text-[#b25537]" />
+              <span>Community</span>
             </button>
           </div>
         </div>
@@ -800,6 +800,18 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
       {/* Main Content by Active Tab */}
       <main className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
+        {activeTab === 'community' && (
+          <CommunityFeed
+            profile={userProfile}
+            preferences={foodPreferences}
+            onCook={(recipe) => handleStartCooking({
+              ...recipe,
+              prep_time: recipe.prep_time || (recipe as any).prep_time_minutes || 15,
+              cook_time: recipe.cook_time || (recipe as any).cook_time_minutes || 20,
+            })}
+          />
+        )}
+
         {/* ===================== TAB 1: 🏠 HOME ===================== */}
         {activeTab === 'home' && (
           <div className="moaka-tab space-y-6">
