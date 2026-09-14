@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Camera, ChefHat, Heart, LoaderCircle, Play, Plus, Send, Share2, Users, Video, X } from 'lucide-react'
 import type { RecipeItem } from './cooking-assistant-app'
-import { cuisineFallbackImage } from '@/lib/recipe-personalization'
+import { RecipeImage } from './recipe-image'
 
 export function CommunityFeed({ profile, preferences, onCook }: { profile: any; preferences: any; onCook: (recipe: RecipeItem) => void }) {
   const [posts, setPosts] = useState<any[]>([])
@@ -29,6 +30,12 @@ export function CommunityFeed({ profile, preferences, onCook }: { profile: any; 
   }
   useEffect(() => { loadPosts() }, [preferences.diet_type, JSON.stringify(preferences.excluded_meats || [])])
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
+  useEffect(() => {
+    if (!composerOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [composerOpen])
 
   const chooseMedia = (file?: File) => {
     if (!file) return
@@ -91,7 +98,7 @@ export function CommunityFeed({ profile, preferences, onCook }: { profile: any; 
           <article key={post.id} className="overflow-hidden rounded-[1.75rem] border border-[#ded9cf] bg-white shadow-sm">
             <div className="flex items-center gap-3 p-4"><span className="flex size-10 items-center justify-center rounded-full bg-[#f4510b] font-black text-white">{String(post.author_name || 'M').charAt(0)}</span><div><p className="text-sm font-black">{post.author_name}</p><p className="text-[10px] uppercase tracking-wider text-[#8d887d]">{recipe?.cuisine} · {recipe?.diet_type}</p></div></div>
             <div className="relative aspect-[4/5] bg-[#20142f]">
-              {post.media_type === 'video' && post.media_url ? <video src={post.media_url} controls playsInline preload="metadata" className="size-full object-cover" /> : <img src={post.media_url || recipe?.image_url || cuisineFallbackImage(recipe?.cuisine)} alt={recipe?.name || 'Community recipe'} className="size-full object-cover" />}
+              {post.media_type === 'video' && post.media_url ? <video src={post.media_url} controls playsInline preload="metadata" className="size-full object-cover" /> : post.media_url ? <img src={post.media_url} alt={recipe?.name || 'Community recipe'} className="size-full object-cover" /> : <RecipeImage recipe={recipe} className="size-full object-cover" />}
               {post.media_type === 'video' && <span className="absolute right-3 top-3 rounded-full bg-black/60 p-2 text-white"><Play className="size-4 fill-current" /></span>}
             </div>
             <div className="p-4">
@@ -103,7 +110,7 @@ export function CommunityFeed({ profile, preferences, onCook }: { profile: any; 
         )
       })}
 
-      {composerOpen && <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-[#160e20]/70 px-3 py-4 backdrop-blur-sm sm:items-center sm:p-6"><div role="dialog" aria-modal="true" aria-label="Post a community recipe" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[1.75rem] bg-[#fbf9f5] shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:rounded-[2rem]">
+      {composerOpen && typeof document !== 'undefined' && createPortal(<div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-[#160e20]/70 px-3 py-4 backdrop-blur-sm sm:p-6"><div role="dialog" aria-modal="true" aria-label="Post a community recipe" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[1.75rem] bg-[#fbf9f5] shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:rounded-[2rem]">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#ece6dc] bg-[#fbf9f5]/95 px-5 py-4 backdrop-blur sm:px-7"><div><p className="text-[10px] font-black uppercase tracking-widest text-[#f4510b]">New community recipe</p><h2 className="font-serif text-xl font-black sm:text-2xl">Share your kitchen win</h2></div><button type="button" onClick={() => setComposerOpen(false)} className="rounded-full bg-white p-2 shadow-sm"><X className="size-5" /></button></div>
         <div className="p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:p-7">
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -121,7 +128,7 @@ export function CommunityFeed({ profile, preferences, onCook }: { profile: any; 
         {preview && <div className="mt-3 overflow-hidden rounded-2xl bg-black">{media?.type.startsWith('video/') ? <video src={preview} controls className="max-h-64 w-full object-contain" /> : <img src={preview} alt="Recipe preview" className="max-h-64 w-full object-cover" />}</div>}
         <button type="button" onClick={publish} disabled={saving || !form.name || !form.ingredients || !form.steps} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#f4510b] p-4 text-sm font-black text-white disabled:opacity-50">{saving ? <LoaderCircle className="size-5 animate-spin" /> : <Send className="size-5" />} Publish recipe</button>
         </div>
-      </div></div>}
+      </div></div>, document.body)}
     </div>
   )
 }

@@ -38,6 +38,7 @@ import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
 import { CommunityFeed } from './community-feed'
+import { RecipeImage } from './recipe-image'
 import { cuisineFallbackImage, recipeContainsExcludedMeat, recipeMatchesDietPreference } from '@/lib/recipe-personalization'
 
 export type RecipeItem = {
@@ -359,11 +360,26 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
     return list
   }, [eligibleRecipes, homeFilter, searchQuery])
 
-  // Contextual meal slot items for Section 16 & 17
-  const breakfastSlot = useMemo(() => eligibleRecipes.find((r) => r.meal_type === 'breakfast') || eligibleRecipes[0], [eligibleRecipes])
-  const lunchSlot = useMemo(() => eligibleRecipes.find((r) => r.meal_type === 'lunch') || eligibleRecipes[1] || eligibleRecipes[0], [eligibleRecipes])
-  const highTeaSlot = useMemo(() => eligibleRecipes.find((r) => r.meal_type === 'high_tea') || eligibleRecipes[2] || eligibleRecipes[0], [eligibleRecipes])
-  const dinnerSlot = useMemo(() => eligibleRecipes.find((r) => r.meal_type === 'dinner') || eligibleRecipes[3] || eligibleRecipes[0], [eligibleRecipes])
+  // Today's cards always reflect the persisted meal plan. They never reshuffle on refresh.
+  const todayPlannedMeals = useMemo(() => {
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    return mealPlans.reduce<Record<string, RecipeItem>>((slots, plan) => {
+      if (plan.planned_date === today && plan.recipes) slots[plan.meal_type] = plan.recipes as RecipeItem
+      return slots
+    }, {})
+  }, [mealPlans])
+  const breakfastSlot = todayPlannedMeals.breakfast || eligibleRecipes.find((r) => r.meal_type === 'breakfast') || eligibleRecipes[0]
+  const lunchSlot = todayPlannedMeals.lunch || eligibleRecipes.find((r) => r.meal_type === 'lunch') || eligibleRecipes[1] || eligibleRecipes[0]
+  const highTeaSlot = todayPlannedMeals.high_tea || eligibleRecipes.find((r) => r.meal_type === 'high_tea') || eligibleRecipes[2] || eligibleRecipes[0]
+  const dinnerSlot = todayPlannedMeals.dinner || eligibleRecipes.find((r) => r.meal_type === 'dinner') || eligibleRecipes[3] || eligibleRecipes[0]
+  const repeatedImageUrls = useMemo(() => {
+    const counts = recipes.reduce<Record<string, number>>((result, recipe) => {
+      if (recipe.image_url) result[recipe.image_url] = (result[recipe.image_url] || 0) + 1
+      return result
+    }, {})
+    return new Set(Object.entries(counts).filter(([, count]) => count > 1).map(([url]) => url))
+  }, [recipes])
 
   // Contextual priority slot
   const priorityMeal = useMemo(() => {
@@ -933,15 +949,11 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
                         {(
                           <div className="mise-meal-photo">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={item.image_url || cuisineFallbackImage(item.cuisine)}
-                              alt={item.name}
+                            <RecipeImage
+                              recipe={item}
+                              regenerate={!item.image_url || repeatedImageUrls.has(item.image_url)}
                               className="size-full object-cover group-hover:scale-105 transition duration-300"
                               loading="lazy"
-                              onError={(event) => {
-                                event.currentTarget.onerror = null
-                                event.currentTarget.src = cuisineFallbackImage(item.cuisine)
-                              }}
                             />
                           </div>
                         )}
