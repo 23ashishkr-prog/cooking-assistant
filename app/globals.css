@@ -161,3 +161,603 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mise: high-energy, tactile Gen Z interface layer */
+body {
+  background:
+    radial-gradient(circle at 10% 5%, rgb(196 255 90 / 18%), transparent 24rem),
+    radial-gradient(circle at 90% 18%, rgb(161 98 247 / 16%), transparent 28rem),
+    #f8f5ee;
+}
+
+.mise-app {
+  --ink: #191522;
+  --grape: #7841e7;
+  --lime: #c4ff5a;
+  --coral: #ff654f;
+  background: transparent;
+  color: var(--ink);
+}
+
+.mise-header {
+  border-color: rgb(25 21 34 / 10%);
+  background: rgb(248 245 238 / 82%);
+  box-shadow: 0 8px 32px rgb(68 44 112 / 7%);
+}
+
+.mise-logo {
+  background: var(--grape);
+  box-shadow: 4px 4px 0 var(--lime);
+  transform: rotate(-3deg);
+}
+
+.mise-hero {
+  min-height: 36rem;
+  border-color: rgb(255 255 255 / 60%);
+  background: #20142f;
+  box-shadow: 0 30px 90px rgb(67 36 116 / 24%);
+}
+
+.mise-hero::after {
+  content: "HOT & FRESH";
+  position: absolute;
+  right: 1.5rem;
+  left: auto;
+  top: 1.4rem;
+  bottom: auto;
+  z-index: 2;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--lime);
+  padding: .45rem .8rem;
+  color: var(--ink);
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  transform: rotate(4deg);
+}
+
+.mise-hero-art {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 64%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 68% center;
+  filter: saturate(1.08) contrast(1.03);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 24%, #000 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 24%, #000 100%);
+}
+
+.mise-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(90deg, #f5e9ff 0%, rgb(245 233 255 / 92%) 39%, rgb(32 20 47 / 8%) 68%), linear-gradient(0deg, rgb(32 20 47 / 35%), transparent 45%);
+  pointer-events: none;
+}
+
+.mise-chip {
+  border: 1px solid rgb(25 21 34 / 12%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 72%);
+  padding: .45rem .7rem;
+  color: #3b304a;
+  font-size: .68rem;
+  font-weight: 800;
+  box-shadow: 0 8px 22px rgb(75 42 132 / 8%);
+  backdrop-filter: blur(10px);
+}
+
+.mise-hero h1 {
+  max-width: 13ch;
+  color: var(--ink);
+  font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+  font-size: clamp(3rem, 7vw, 5.8rem);
+  line-height: .84;
+  letter-spacing: -.065em;
+}
+
+.mise-hero h1 em {
+  color: var(--grape);
+  font-family: Georgia, serif;
+  font-weight: 500;
+}
+
+.mise-flavor-ticker {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 1rem;
+  overflow: hidden;
+  border: 1px solid rgb(25 21 34 / 12%);
+  border-radius: 999px;
+  background: var(--lime);
+  padding: .8rem 1.1rem;
+  color: var(--ink);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 5px 6px 0 var(--ink);
+  transform: rotate(-.5deg);
+}
+
+.mise-flavor-ticker b { color: var(--grape); }
+
+.mise-meal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: auto;
+  gap: 1rem;
+}
+
+.mise-meal-card {
+  position: relative;
+  display: flex;
+  min-height: 31rem;
+  flex-direction: column;
+  justify-content: space-between;
+  grid-column: span 1;
+  overflow: visible;
+  border: 1px solid rgb(25 21 34 / 10%);
+  border-radius: 1.75rem;
+  background: white;
+  padding: 1rem;
+  box-shadow: 0 18px 55px rgb(69 40 115 / 10%);
+  transition: transform 350ms cubic-bezier(.2,.8,.2,1), box-shadow 350ms ease;
+}
+
+.mise-meal-card-1,
+.mise-meal-card-2,
+.mise-meal-card-3,
+.mise-meal-card-4 { grid-column: span 1; grid-row: auto; }
+
+.mise-meal-card:hover {
+  transform: translateY(-7px) rotate(.35deg);
+  box-shadow: 0 28px 70px rgb(69 40 115 / 18%);
+}
+
+.mise-meal-photo {
+  height: 15rem;
+  margin: .65rem 0 .9rem;
+  overflow: hidden;
+  border-radius: 1.2rem;
+  background: #eee8df;
+}
+
+.mise-meal-card-1 .mise-meal-photo,
+.mise-meal-card-2 .mise-meal-photo { height: 15rem; }
+
+.mise-meal-title {
+  color: var(--ink);
+  font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: -.03em;
+}
+
+.mise-meal-meta { margin-bottom: .25rem; }
+
+@media (max-width: 1023px) and (min-width: 640px) {
+  .mise-meal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.mise-ready-card {
+  border-color: rgb(255 255 255 / 70%);
+  background: rgb(255 255 255 / 78%);
+  box-shadow: 0 14px 38px rgb(55 31 98 / 16%);
+  backdrop-filter: blur(18px);
+}
+
+.mise-prep-panel {
+  border-color: rgb(120 65 231 / 14%);
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 96%), rgb(250 246 255 / 92%));
+  box-shadow: 0 24px 70px rgb(62 37 104 / 10%);
+}
+
+.mise-kitchen-scan {
+  border-color: rgb(120 65 231 / 18%);
+  background:
+    radial-gradient(circle at 100% 0%, rgb(196 255 90 / 24%), transparent 18rem),
+    linear-gradient(145deg, #fff, #faf5ff);
+  box-shadow: 0 24px 70px rgb(62 37 104 / 11%);
+}
+
+.mise-scan-layout {
+  display: grid;
+  grid-template-columns: minmax(190px, .65fr) minmax(0, 1.35fr);
+  gap: 1.25rem;
+}
+
+.mise-scan-photo {
+  position: relative;
+  min-height: 240px;
+  overflow: hidden;
+  border-radius: 1.25rem;
+}
+
+.mise-scan-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mise-scan-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 48%, rgb(25 21 34 / 58%));
+}
+
+.mise-scan-photo span {
+  position: absolute;
+  left: .8rem;
+  bottom: .75rem;
+  z-index: 1;
+  border: 1px solid rgb(255 255 255 / 34%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 18%);
+  padding: .35rem .65rem;
+  color: white;
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+.mise-kitchen-scan label,
+.mise-kitchen-scan button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mise-deadline-select {
+  border-color: rgb(120 65 231 / 18%);
+  background: rgb(255 255 255 / 82%);
+  box-shadow: 0 8px 24px rgb(75 42 132 / 8%);
+  backdrop-filter: blur(14px);
+}
+
+.mise-deadline-select select {
+  color-scheme: light;
+  accent-color: var(--grape);
+}
+
+.mise-app img {
+  filter: saturate(1.06) contrast(1.02);
+}
+
+.mise-app .group img {
+  transform: scale(1.01);
+  transition: transform 500ms cubic-bezier(.2,.8,.2,1), filter 300ms ease;
+}
+
+.mise-app .group:hover img {
+  filter: saturate(1.14) contrast(1.04);
+  transform: scale(1.075);
+}
+
+.mise-app main {
+  width: 100%;
+}
+
+.mise-app main > div {
+  animation: mise-page-in 420ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes mise-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mise-app main > div > div:not(.mise-hero),
+.mise-app main article {
+  --tw-shadow-color: rgb(64 36 111 / 8%);
+}
+
+.mise-app button {
+  transition: transform 180ms ease, box-shadow 180ms ease, color 180ms ease, background-color 180ms ease;
+}
+
+.mise-app button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.mise-app button:focus-visible,
+.mise-app input:focus-visible,
+.mise-app select:focus-visible,
+.mise-app textarea:focus-visible {
+  outline: 3px solid rgb(196 255 90 / 90%);
+  outline-offset: 3px;
+}
+
+.mise-nav {
+  left: 50%;
+  right: auto;
+  bottom: .9rem;
+  width: min(calc(100% - 1.5rem), 31rem);
+  transform: translateX(-50%);
+  border: 1px solid rgb(25 21 34 / 12%);
+  border-radius: 1.4rem;
+  background: rgb(255 255 255 / 86%);
+  box-shadow: 0 16px 55px rgb(38 20 70 / 20%);
+}
+
+@media (max-width: 639px) {
+  .mise-hero {
+    min-height: 38rem;
+    padding-bottom: 5rem;
+  }
+
+  .mise-flavor-ticker { justify-content: flex-start; }
+
+  .mise-meal-grid { display: flex; flex-direction: column; }
+  .mise-meal-card { min-height: 27rem; }
+  .mise-meal-card .mise-meal-photo { height: 16rem; }
+
+  .mise-hero-art {
+    inset: auto 0 0;
+    width: 100%;
+    height: 55%;
+    object-position: 68% center;
+    mask-image: linear-gradient(180deg, transparent 0%, #000 28%, #000 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 28%, #000 100%);
+  }
+
+  .mise-hero h1 {
+    max-width: 10ch;
+  }
+
+  .mise-prep-panel {
+    border-radius: 1.35rem;
+    padding: 1rem;
+  }
+
+  .mise-scan-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mise-scan-photo {
+    min-height: 190px;
+  }
+
+  .mise-nav span {
+    font-size: .56rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mise-app *, .mise-app *::before, .mise-app *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Moaka — warm, food-first mobile product language */
+.mise-app {
+  --ink: #29262e;
+  --grape: #f4510b;
+  --lime: #ffd928;
+  --coral: #f4510b;
+  background:
+    radial-gradient(circle at 10% 0%, rgb(255 218 181 / 35%), transparent 28rem),
+    linear-gradient(180deg, #fff 0%, #fbfaf8 55%, #fff5ee 100%);
+}
+
+.mise-header {
+  border-color: rgb(41 38 46 / 7%);
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 12px 36px rgb(54 35 23 / 7%);
+}
+
+.mise-logo {
+  background: #f4510b;
+  border: 3px solid white;
+  box-shadow: 0 7px 18px rgb(244 81 11 / 28%);
+  transform: none;
+}
+
+.mise-app main { max-width: 72rem; }
+
+.mise-hero {
+  min-height: 35rem;
+  border: 0;
+  background: #080808;
+  box-shadow: 0 30px 70px rgb(38 20 9 / 25%);
+}
+
+.mise-hero-art {
+  inset: 1.25rem -3.5rem auto auto;
+  width: min(68%, 46rem);
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 38px 34px rgb(0 0 0 / 55%)) saturate(1.1) contrast(1.04);
+  mask-image: radial-gradient(circle at 58% 50%, #000 48%, rgb(0 0 0 / 96%) 66%, transparent 88%);
+  -webkit-mask-image: radial-gradient(circle at 58% 50%, #000 48%, rgb(0 0 0 / 96%) 66%, transparent 88%);
+  transform: perspective(1000px) rotateX(7deg) rotateZ(-3deg) scale(1.07);
+  transform-origin: 62% 55%;
+  animation: moaka-hero-float 6s ease-in-out infinite;
+}
+
+.mise-hero::before {
+  background: linear-gradient(90deg, #090909 0%, rgb(9 9 9 / 96%) 39%, rgb(9 9 9 / 16%) 75%), linear-gradient(0deg, rgb(0 0 0 / 50%), transparent 55%);
+}
+
+.mise-hero h1 { color: white; }
+.mise-hero h1 em { color: #ff5a12; }
+.mise-hero p { color: rgb(255 255 255 / 74%); }
+.mise-hero > div > div > p:first-child { color: #ff6a28; }
+
+.mise-chip {
+  border-color: rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 12%);
+  color: white;
+  box-shadow: none;
+}
+
+.mise-hero::after {
+  content: "MOAKA PICK";
+  border: 0;
+  background: #f4510b;
+  color: white;
+  box-shadow: 0 9px 24px rgb(244 81 11 / 35%);
+}
+
+.mise-ready-card {
+  border-color: rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 22%);
+}
+.mise-ready-card p { color: #29262e; }
+
+@keyframes moaka-hero-float {
+  0%, 100% { transform: perspective(1000px) translateY(0) rotateX(7deg) rotateZ(-3deg) scale(1.07); }
+  50% { transform: perspective(1000px) translateY(-12px) rotateX(4deg) rotateZ(-1.5deg) scale(1.09); }
+}
+
+.mise-nutrition-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-top: .75rem;
+}
+
+.mise-calorie-pill,
+.mise-score-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: .35rem .58rem;
+  font-size: .66rem;
+  font-weight: 900;
+  letter-spacing: -.01em;
+}
+
+.mise-calorie-pill { background: #fff0e8; color: #c53f05; }
+.mise-score-pill { background: #eaf8d5; color: #356a22; }
+
+.mise-flavor-ticker {
+  border: 0;
+  background: #f4510b;
+  color: white;
+  box-shadow: 0 12px 28px rgb(244 81 11 / 22%);
+  transform: none;
+}
+.mise-flavor-ticker b { color: #ffd928; }
+
+.mise-meal-card {
+  border: 0;
+  border-radius: 1.65rem;
+  box-shadow: 0 14px 36px rgb(45 31 23 / 10%);
+}
+.mise-meal-photo { margin: -.25rem -.25rem 1rem; width: calc(100% + .5rem); }
+.mise-meal-title { font-size: 1.25rem; }
+
+.moaka-tab > div.rounded-3xl,
+.moaka-tab > section.rounded-3xl,
+.moaka-tab article,
+.mise-prep-panel,
+.mise-kitchen-scan {
+  border-color: rgb(41 38 46 / 7%) !important;
+  background-color: white !important;
+  box-shadow: 0 14px 40px rgb(55 35 25 / 8%) !important;
+}
+
+.moaka-tab > div:first-child:not(.mise-flavor-ticker),
+.moaka-tab > section:first-child:not(.mise-hero) {
+  position: relative;
+  overflow: hidden;
+  border: 0 !important;
+  background: linear-gradient(120deg, #fff 0%, #fff7f1 100%) !important;
+}
+
+.moaka-tab > div:first-child:not(.mise-flavor-ticker)::after,
+.moaka-tab > section:first-child:not(.mise-hero)::after {
+  content: "M";
+  position: absolute;
+  right: 1.2rem;
+  top: 50%;
+  color: rgb(244 81 11 / 7%);
+  font-size: 8rem;
+  font-weight: 1000;
+  line-height: 1;
+  transform: translateY(-50%) rotate(-8deg);
+  pointer-events: none;
+}
+
+.mise-kitchen-scan {
+  background: linear-gradient(145deg, #fff, #fff4ec) !important;
+}
+
+.mise-scan-photo { min-height: 300px; }
+
+.mise-app button[class*="bg-[#b25537]"],
+.mise-app button[class*="bg-[#223129]"] {
+  background: #f4510b !important;
+  color: white !important;
+  box-shadow: 0 8px 20px rgb(244 81 11 / 22%);
+}
+
+.mise-app button[class*="bg-[#b25537]"]:hover,
+.mise-app button[class*="bg-[#223129]"]:hover {
+  background: #d94000 !important;
+}
+
+.mise-app input,
+.mise-app select,
+.mise-app textarea {
+  border-color: rgb(41 38 46 / 10%) !important;
+  background: #fafafa !important;
+}
+
+.mise-nav {
+  bottom: 1rem;
+  width: min(calc(100% - 1.4rem), 35rem);
+  border: 0;
+  border-radius: 2rem;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 18px 55px rgb(43 27 19 / 18%);
+}
+
+.mise-nav button { color: #aaa5a7; }
+.mise-nav button[class*="text-[#b25537]"] { color: #f4510b !important; }
+.moaka-nav-logo {
+  width: 2.85rem;
+  height: 2.85rem;
+  margin-top: -1.65rem;
+  border: 4px solid white;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 8px 22px rgb(244 81 11 / 28%);
+}
+.moaka-nav-logo.is-active { transform: scale(1.08); }
+
+@media (max-width: 639px) {
+  .mise-app main { padding-left: .85rem; padding-right: .85rem; }
+  .mise-header > div { padding-left: 1rem; padding-right: 1rem; }
+  .mise-hero { min-height: 39rem; border-radius: 0 0 2.1rem 2.1rem; margin-left: -.85rem; margin-right: -.85rem; }
+  .mise-hero-art {
+    inset: auto -18% -3rem auto;
+    width: 118%;
+    height: auto;
+    mask-image: radial-gradient(circle at 58% 52%, #000 50%, rgb(0 0 0 / 96%) 70%, transparent 90%);
+    -webkit-mask-image: radial-gradient(circle at 58% 52%, #000 50%, rgb(0 0 0 / 96%) 70%, transparent 90%);
+  }
+  .mise-hero::before { background: linear-gradient(180deg, #080808 0%, rgb(8 8 8 / 93%) 39%, transparent 70%); }
+  .mise-hero h1 { font-size: clamp(3rem, 17vw, 4.7rem); }
+  .moaka-tab { gap: 1rem; }
+  .moaka-tab > div.rounded-3xl, .moaka-tab > section.rounded-3xl { border-radius: 1.6rem; }
+}
