@@ -108,7 +108,7 @@ const QUICK_SEARCHES = [
   'Classic Tiramisu',
 ]
 
-export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: any[] }) {
+export function CookingAssistantApp({ initialRecipes = [], userId = 'default_user', initialUserName = 'Ashish' }: { initialRecipes: any[]; userId?: string; initialUserName?: string }) {
   // Navigation
   const [activeTab, setActiveTab] = useState<ActiveTab>('home')
 
@@ -140,7 +140,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   // Current Context Greeting
   const [greeting, setGreeting] = useState('Good Evening')
   const [contextualSlot, setContextualSlot] = useState<'breakfast' | 'lunch' | 'high_tea' | 'dinner'>('dinner')
-  const [userName, setUserName] = useState('Ashish')
+  const [userName, setUserName] = useState(initialUserName)
 
   // Search & Filters on Home
   const [searchQuery, setSearchQuery] = useState('')
@@ -214,7 +214,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   useEffect(() => {
     async function fetchRecommendations() {
       try {
-        const res = await fetch('/api/recommendations')
+        const res = await fetch(`/api/recommendations?userId=${encodeURIComponent(userId)}`)
         const data = await res.json()
         if (data.greeting) setGreeting(data.greeting)
         if (data.userName) setUserName(data.userName)
@@ -224,7 +224,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       }
     }
     fetchRecommendations()
-  }, [])
+  }, [userId])
 
   // Keep the hero recommendation aligned to the user's current local time.
   useEffect(() => {
@@ -247,7 +247,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   const loadMealPlans = async () => {
     setLoadingPlans(true)
     try {
-      const res = await fetch('/api/meal-plans')
+      const res = await fetch(`/api/meal-plans?userId=${encodeURIComponent(userId)}`)
       const data = await res.json()
       if (res.ok && data.plans?.length) {
         setMealPlans(data.plans)
@@ -268,7 +268,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   const loadInventory = async () => {
     setLoadingInventory(true)
     try {
-      const res = await fetch('/api/kitchen/inventory')
+      const res = await fetch(`/api/kitchen/inventory?userId=${encodeURIComponent(userId)}`)
       const data = await res.json()
       if (data.items) setInventory(data.items)
     } catch (err) {
@@ -293,7 +293,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
   // Fetch profile
   const loadProfile = async () => {
     try {
-      const res = await fetch('/api/profile')
+      const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`)
       const data = await res.json()
       if (data.profile) setUserProfile(data.profile)
       if (data.preferences) setFoodPreferences(data.preferences)
@@ -308,14 +308,14 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       const res = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preferences: foodPreferences }),
+        body: JSON.stringify({ userId, preferences: foodPreferences }),
       })
       const data = await res.json()
       if (!res.ok || !data.success) throw new Error(data.error || 'Could not save preferences')
       const planRes = await fetch('/api/plan/generate-week', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ userId }),
       })
       const planData = await planRes.json()
       if (!planRes.ok || !planData.success) throw new Error(planData.error || 'Preferences saved, but the meal plan could not be refreshed.')
@@ -489,7 +489,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       const res = await fetch('/api/plan/generate-week', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ userId }),
       })
       const data = await res.json()
       if (!res.ok || !data.success) {
@@ -818,6 +818,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
       <main className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
         {activeTab === 'community' && (
           <CommunityFeed
+            userId={userId}
             profile={userProfile}
             preferences={foodPreferences}
             onCook={(recipe) => handleStartCooking({

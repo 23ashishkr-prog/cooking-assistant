@@ -1,5 +1,7 @@
 import { CookingAssistantApp } from '@/components/cooking-assistant-app'
 import { createAdminClient, type Recipe } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +41,16 @@ async function getRecipes(): Promise<Recipe[]> {
 }
 
 export default async function Page() {
+  let userId = 'default_user'
+  let userName = 'Ashish'
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
+    const supabase = await createClient()
+    const { data } = await supabase.auth.getUser()
+    if (!data.user) redirect('/login')
+    userId = data.user.id
+    userName = data.user.user_metadata?.full_name || data.user.user_metadata?.username || 'Ashish'
+  }
   const recipes = await getRecipes()
 
-  return <CookingAssistantApp initialRecipes={recipes} />
+  return <CookingAssistantApp initialRecipes={recipes} userId={userId} initialUserName={userName} />
 }

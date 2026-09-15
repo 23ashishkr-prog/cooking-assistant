@@ -27,6 +27,7 @@ export type Recipe = {
 
 function createMockClient() {
   return {
+    auth: { getUser: async () => ({ data: { user: null }, error: null }) },
     from: (_table: string) => {
       const queryObj: any = {
         _data: [],

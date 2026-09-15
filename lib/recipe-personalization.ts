@@ -81,3 +81,11 @@ export function cuisineFallbackImage(cuisine: unknown) {
   if (ASIAN_CUISINES.has(value)) return '/recipe-fallback-asian.webp'
   return '/gen-z-food-hero.jpg'
 }
+
+export function generatedRecipeImage(recipe: { name?: unknown; title?: unknown }) {
+  const name = String(recipe.name || recipe.title || '').toLowerCase()
+  if (name.includes('arunachal')) return '/recipe-arunachal-zan.png'
+  if (name.includes('uttaranchal') || name.includes('uttarakhand')) return '/recipe-uttarakhand-aloo.png'
+  if (name.includes('mizoram')) return '/recipe-mizoram-bai.png'
+  return null
+}

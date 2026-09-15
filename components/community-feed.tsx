@@ -6,7 +6,7 @@ import { Camera, ChefHat, Heart, LoaderCircle, Play, Plus, Send, Share2, Users, 
 import type { RecipeItem } from './cooking-assistant-app'
 import { RecipeImage } from './recipe-image'
 
-export function CommunityFeed({ profile, preferences, onCook }: { profile: any; preferences: any; onCook: (recipe: RecipeItem) => void }) {
+export function CommunityFeed({ userId, profile, preferences, onCook }: { userId: string; profile: any; preferences: any; onCook: (recipe: RecipeItem) => void }) {
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [composerOpen, setComposerOpen] = useState(false)
@@ -21,14 +21,14 @@ export function CommunityFeed({ profile, preferences, onCook }: { profile: any; 
   const loadPosts = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/community')
+      const res = await fetch(`/api/community?userId=${encodeURIComponent(userId)}`)
       const data = await res.json()
       setPosts(data.posts || [])
     } finally {
       setLoading(false)
     }
   }
-  useEffect(() => { loadPosts() }, [preferences.diet_type, JSON.stringify(preferences.excluded_meats || [])])
+  useEffect(() => { loadPosts() }, [userId, preferences.diet_type, JSON.stringify(preferences.excluded_meats || [])])
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
   useEffect(() => {
     if (!composerOpen) return
@@ -51,6 +51,7 @@ export function CommunityFeed({ profile, preferences, onCook }: { profile: any; 
       const payload = new FormData()
       Object.entries(form).forEach(([key, value]) => payload.append(key === 'prep' ? 'prep_time_minutes' : key === 'cook' ? 'cook_time_minutes' : key, value))
       payload.append('author_name', profile.name || 'Moaka Cook')
+      payload.append('user_id', userId)
       payload.append('diet_type', preferences.diet_type || 'Vegetarian')
       if (media) payload.append('media', media)
       const res = await fetch('/api/community', { method: 'POST', body: payload })
@@ -110,20 +111,20 @@ export function CommunityFeed({ profile, preferences, onCook }: { profile: any; 
         )
       })}
 
-      {composerOpen && typeof document !== 'undefined' && createPortal(<div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-[#160e20]/70 px-3 py-4 backdrop-blur-sm sm:p-6"><div role="dialog" aria-modal="true" aria-label="Post a community recipe" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[1.75rem] bg-[#fbf9f5] shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:rounded-[2rem]">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#ece6dc] bg-[#fbf9f5]/95 px-5 py-4 backdrop-blur sm:px-7"><div><p className="text-[10px] font-black uppercase tracking-widest text-[#f4510b]">New community recipe</p><h2 className="font-serif text-xl font-black sm:text-2xl">Share your kitchen win</h2></div><button type="button" onClick={() => setComposerOpen(false)} className="rounded-full bg-white p-2 shadow-sm"><X className="size-5" /></button></div>
+      {composerOpen && typeof document !== 'undefined' && createPortal(<div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-[#160e20]/70 px-3 py-4 backdrop-blur-sm sm:p-6"><div role="dialog" aria-modal="true" aria-label="Post a community recipe" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[1.75rem] bg-[#fbf9f5] text-[#223129] shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:rounded-[2rem]">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#ece6dc] bg-[#fbf9f5]/95 px-5 py-4 backdrop-blur sm:px-7"><div><p className="text-[10px] font-black uppercase tracking-widest text-[#f4510b]">New community recipe</p><h2 className="font-serif text-xl font-black text-[#211b27] sm:text-2xl">Share your kitchen win</h2></div><button type="button" onClick={() => setComposerOpen(false)} aria-label="Close recipe form" className="rounded-full border border-[#e8e1d7] bg-white p-2 text-[#332d36] shadow-sm transition hover:bg-[#fff0e8]"><X className="size-5" /></button></div>
         <div className="p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:p-7">
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <input value={form.name} onChange={e => setForm({...form,name:e.target.value})} placeholder="Recipe name *" className="rounded-xl border bg-white p-3 text-sm" />
-          <input value={form.caption} onChange={e => setForm({...form,caption:e.target.value})} placeholder="Tell your story" className="rounded-xl border bg-white p-3 text-sm" />
-          <select value={form.cuisine} onChange={e => setForm({...form,cuisine:e.target.value})} className="rounded-xl border bg-white p-3 text-sm"><option>Indian</option><option>Italian</option><option>Asian</option><option>Global</option></select>
-          <select value={form.meal_type} onChange={e => setForm({...form,meal_type:e.target.value})} className="rounded-xl border bg-white p-3 text-sm"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="high_tea">High Tea</option><option value="dinner">Dinner</option></select>
-          <input value={form.prep} onChange={e => setForm({...form,prep:e.target.value})} type="number" min="1" placeholder="Prep minutes" className="rounded-xl border bg-white p-3 text-sm" />
-          <input value={form.cook} onChange={e => setForm({...form,cook:e.target.value})} type="number" min="1" placeholder="Cook minutes" className="rounded-xl border bg-white p-3 text-sm" />
-          <textarea value={form.ingredients} onChange={e => setForm({...form,ingredients:e.target.value})} placeholder="Ingredients, separated by commas *" className="min-h-24 rounded-xl border bg-white p-3 text-sm sm:col-span-2" />
-          <textarea value={form.steps} onChange={e => setForm({...form,steps:e.target.value})} placeholder="Cooking steps, one per line *" className="min-h-28 rounded-xl border bg-white p-3 text-sm sm:col-span-2" />
+          <input value={form.name} onChange={e => setForm({...form,name:e.target.value})} placeholder="Recipe name *" className="rounded-xl border border-[#ded9cf] bg-white p-3 text-sm text-[#223129] placeholder:text-[#8d887d]" />
+          <input value={form.caption} onChange={e => setForm({...form,caption:e.target.value})} placeholder="Tell your story" className="rounded-xl border border-[#ded9cf] bg-white p-3 text-sm text-[#223129] placeholder:text-[#8d887d]" />
+          <select value={form.cuisine} onChange={e => setForm({...form,cuisine:e.target.value})} className="rounded-xl border border-[#ded9cf] bg-white p-3 text-sm text-[#223129]"><option>Indian</option><option>Italian</option><option>Asian</option><option>Global</option></select>
+          <select value={form.meal_type} onChange={e => setForm({...form,meal_type:e.target.value})} className="rounded-xl border border-[#ded9cf] bg-white p-3 text-sm text-[#223129]"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="high_tea">High Tea</option><option value="dinner">Dinner</option></select>
+          <input value={form.prep} onChange={e => setForm({...form,prep:e.target.value})} type="number" min="1" aria-label="Preparation time in minutes" className="rounded-xl border border-[#ded9cf] bg-white p-3 text-sm text-[#223129]" />
+          <input value={form.cook} onChange={e => setForm({...form,cook:e.target.value})} type="number" min="1" aria-label="Cooking time in minutes" className="rounded-xl border border-[#ded9cf] bg-white p-3 text-sm text-[#223129]" />
+          <textarea value={form.ingredients} onChange={e => setForm({...form,ingredients:e.target.value})} placeholder="Ingredients, separated by commas *" className="min-h-24 rounded-xl border border-[#ded9cf] bg-white p-3 text-sm text-[#223129] placeholder:text-[#8d887d] sm:col-span-2" />
+          <textarea value={form.steps} onChange={e => setForm({...form,steps:e.target.value})} placeholder="Cooking steps, one per line *" className="min-h-28 rounded-xl border border-[#ded9cf] bg-white p-3 text-sm text-[#223129] placeholder:text-[#8d887d] sm:col-span-2" />
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"><button type="button" onClick={() => photoInput.current?.click()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border bg-white px-3 py-3 text-center text-xs font-black"><Camera className="size-4 shrink-0 text-[#f4510b]" /> <span>Take/upload photo</span></button><button type="button" onClick={() => videoInput.current?.click()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border bg-white px-3 py-3 text-center text-xs font-black"><Video className="size-4 shrink-0 text-[#f4510b]" /> <span>Upload short video</span></button></div>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2"><button type="button" onClick={() => photoInput.current?.click()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#ded9cf] bg-white px-3 py-3 text-center text-xs font-black text-[#2c2630]"><Camera className="size-4 shrink-0 text-[#f4510b]" /> <span>Take/upload photo</span></button><button type="button" onClick={() => videoInput.current?.click()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#ded9cf] bg-white px-3 py-3 text-center text-xs font-black text-[#2c2630]"><Video className="size-4 shrink-0 text-[#f4510b]" /> <span>Upload short video</span></button></div>
         <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden onChange={e => chooseMedia(e.target.files?.[0])} /><input ref={videoInput} type="file" accept="video/*" capture="environment" hidden onChange={e => chooseMedia(e.target.files?.[0])} />
         {preview && <div className="mt-3 overflow-hidden rounded-2xl bg-black">{media?.type.startsWith('video/') ? <video src={preview} controls className="max-h-64 w-full object-contain" /> : <img src={preview} alt="Recipe preview" className="max-h-64 w-full object-cover" />}</div>}
         <button type="button" onClick={publish} disabled={saving || !form.name || !form.ingredients || !form.steps} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#f4510b] p-4 text-sm font-black text-white disabled:opacity-50">{saving ? <LoaderCircle className="size-5 animate-spin" /> : <Send className="size-5" />} Publish recipe</button>
