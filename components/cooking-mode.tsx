@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
-  Bot,
   Check,
   CheckCircle2,
   Clock,
@@ -691,8 +690,10 @@ export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: Cookin
             onClick={() => setIsAiOpen(true)}
             className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ded9cf] bg-white py-2.5 text-xs font-semibold text-[#b25537] hover:bg-[#fbf7f4] transition shadow-xs"
           >
-            <Bot className="size-4 text-[#b25537]" />
-            <span>Ask Moaka AI about this step</span>
+            <span className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-black shadow-[0_0_20px_rgba(41,220,176,.24)]">
+              <img src="/moaka-ai-orb.gif" alt="" aria-hidden="true" className="size-full object-cover" />
+            </span>
+            <span>Ask Moaka AI</span>
           </button>
 
           {/* Giant DONE button */}
@@ -740,8 +741,8 @@ export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: Cookin
           <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 shadow-2xl border border-[#ded9cf] space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#f0ece3] pb-3">
               <div className="flex items-center gap-2">
-                <span className="flex size-8 items-center justify-center rounded-xl bg-[#faede6] text-[#b25537]">
-                  <Bot className="size-4" />
+                <span className="flex size-10 items-center justify-center overflow-hidden rounded-xl bg-black">
+                  <img src="/moaka-ai-orb.gif" alt="" aria-hidden="true" className="size-full object-cover" />
                 </span>
                 <div>
                   <h3 className="text-sm font-bold text-[#223129]">Chef AI Assistant</h3>

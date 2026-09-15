@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic'
 export default async function LoginPage() {
   if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
     const supabase = await createClient()
-    const { data } = await supabase.auth.getUser()
-    if (data.user) redirect('/')
+    const { data } = await supabase.auth.getClaims()
+    if (data?.claims?.sub) redirect('/')
   }
   return <LoginForm />
 }

@@ -1,10 +1,12 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { FormEvent, useState } from 'react'
 import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export function LoginForm() {
+  const router = useRouter()
   const [username, setUsername] = useState('ashish')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -16,35 +18,49 @@ export function LoginForm() {
     setLoading(true)
     setError('')
     try {
-      const setup = await fetch('/api/auth/bootstrap', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      })
-      const setupData = await setup.json()
-      if (!setup.ok) throw new Error(setupData.error || 'Login setup failed')
       const supabase = createClient()
-      const { error: loginError } = await supabase.auth.signInWithPassword({ email: setupData.email, password })
+      const normalizedUsername = username.trim().toLowerCase()
+      const email = `${normalizedUsername}@moaka.app`
+      let { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
+
+      // Bootstrap is only a recovery path for a first deployment. Normal logins
+      // now use one direct Auth request instead of listing every project user.
+      if (loginError && normalizedUsername === 'ashish') {
+        const setup = await fetch('/api/auth/bootstrap', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        })
+        const setupData = await setup.json()
+        if (!setup.ok) throw new Error(setupData.error || 'Login setup failed')
+        ;({ error: loginError } = await supabase.auth.signInWithPassword({ email: setupData.email, password }))
+      }
+
       if (loginError) throw loginError
-      await fetch('/api/plan/generate-week', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: setupData.userId, startDate: new Date().toLocaleDateString('en-CA') }),
-      })
-      window.location.assign('/')
+      // Supabase has already written the session cookie. A client transition
+      // avoids throwing away the loaded application shell with a full reload.
+      router.replace('/')
+      router.refresh()
     } catch (loginError: any) {
       setError(loginError?.message || 'Username or password is incorrect.')
     } finally { setLoading(false) }
   }
 
   return <main className="min-h-[100dvh] bg-[#24131a] text-white lg:grid lg:grid-cols-[1.08fr_.92fr]">
-    <section className="relative hidden min-h-screen overflow-hidden lg:block">
-      <img src="/moaka-login-3d.png" alt="Floating 3D Moaka paneer plate and spices" className="absolute inset-0 size-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#351019]/40 via-transparent to-[#24131a]" />
-      <div className="absolute inset-x-12 bottom-12 rounded-[2rem] border border-white/15 bg-black/25 p-7 backdrop-blur-md">
+    <section className="relative min-h-[48svh] overflow-hidden bg-[#160c11] lg:min-h-[100dvh]">
+      <img
+        src="/moaka-login-3d.webp"
+        alt="Floating 3D Moaka paneer plate and spices"
+        fetchPriority="high"
+        decoding="async"
+        className="absolute inset-0 size-full object-cover object-center"
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#351019]/20 via-transparent to-[#24131a]/65" />
+      <div className="absolute inset-x-5 bottom-5 rounded-[1.5rem] border border-white/15 bg-black/25 p-4 backdrop-blur-md sm:inset-x-8 lg:inset-x-12 lg:bottom-12 lg:rounded-[2rem] lg:p-7">
         <p className="text-xs font-black uppercase tracking-[.3em] text-[#ff8a57]">Cook what you have</p>
-        <h2 className="mt-2 max-w-xl font-serif text-5xl font-black leading-[.95]">Your kitchen.<br/>Your plan. Your Moaka.</h2>
+        <h2 className="mt-2 max-w-xl font-serif text-2xl font-black leading-[.95] sm:text-3xl lg:text-5xl">Your kitchen.<br/>Your plan. Your Moaka.</h2>
       </div>
     </section>
-    <section className="flex min-h-[100dvh] items-center justify-center px-5 py-10 sm:px-10">
+    <section className="flex items-center justify-center px-5 py-10 sm:px-10 lg:min-h-[100dvh]">
       <form onSubmit={submit} className="w-full max-w-md">
         <div className="flex items-center gap-4"><img src="/moaka-icon.jpg" alt="Moaka" className="size-16 rounded-2xl border-2 border-white/20 shadow-2xl"/><div><p className="text-3xl font-black tracking-[-.06em]">moaka</p><p className="text-[10px] font-black uppercase tracking-[.28em] text-[#ff7440]">smart kitchen</p></div></div>
         <p className="mt-12 text-xs font-black uppercase tracking-[.3em] text-[#ff7440]">Welcome back</p>

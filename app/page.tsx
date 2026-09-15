@@ -13,7 +13,7 @@ async function getRecipes(): Promise<Recipe[]> {
       .select(`
         id, name, title, description, image_url, meal_type, category, cuisine, diet_type,
         prep_time_minutes, prep_time, cook_time_minutes, cook_time, total_time_minutes,
-        default_servings, servings, difficulty, calories, nutrition_score, tips, ingredients, instructions
+        default_servings, servings, difficulty, calories, nutrition_score
       `)
       .order('created_at', { ascending: false })
       .limit(100)
@@ -43,14 +43,16 @@ async function getRecipes(): Promise<Recipe[]> {
 export default async function Page() {
   let userId = 'default_user'
   let userName = 'Ashish'
+  const recipesPromise = getRecipes()
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
     const supabase = await createClient()
-    const { data } = await supabase.auth.getUser()
-    if (!data.user) redirect('/login')
-    userId = data.user.id
-    userName = data.user.user_metadata?.full_name || data.user.user_metadata?.username || 'Ashish'
+    const { data } = await supabase.auth.getClaims()
+    const claims = data?.claims as any
+    if (!claims?.sub) redirect('/login')
+    userId = String(claims.sub)
+    userName = claims.user_metadata?.full_name || claims.user_metadata?.username || 'Ashish'
   }
-  const recipes = await getRecipes()
+  const recipes = await recipesPromise
 
   return <CookingAssistantApp initialRecipes={recipes} userId={userId} initialUserName={userName} />
 }
