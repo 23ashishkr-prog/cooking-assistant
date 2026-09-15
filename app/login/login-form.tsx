@@ -27,7 +27,7 @@ export function LoginForm() {
       if (loginError) throw loginError
       await fetch('/api/plan/generate-week', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: setupData.userId }),
+        body: JSON.stringify({ userId: setupData.userId, startDate: new Date().toLocaleDateString('en-CA') }),
       })
       window.location.assign('/')
     } catch (loginError: any) {
@@ -37,7 +37,7 @@ export function LoginForm() {
 
   return <main className="min-h-[100dvh] bg-[#24131a] text-white lg:grid lg:grid-cols-[1.08fr_.92fr]">
     <section className="relative hidden min-h-screen overflow-hidden lg:block">
-      <img src="/gen-z-food-hero.jpg" alt="Premium Moaka plated food" className="absolute inset-0 size-full object-cover" />
+      <img src="/moaka-login-3d.png" alt="Floating 3D Moaka paneer plate and spices" className="absolute inset-0 size-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#351019]/40 via-transparent to-[#24131a]" />
       <div className="absolute inset-x-12 bottom-12 rounded-[2rem] border border-white/15 bg-black/25 p-7 backdrop-blur-md">
         <p className="text-xs font-black uppercase tracking-[.3em] text-[#ff8a57]">Cook what you have</p>

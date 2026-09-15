@@ -214,7 +214,8 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
   useEffect(() => {
     async function fetchRecommendations() {
       try {
-        const res = await fetch(`/api/recommendations?userId=${encodeURIComponent(userId)}`)
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'
+        const res = await fetch(`/api/recommendations?userId=${encodeURIComponent(userId)}&timeZone=${encodeURIComponent(timeZone)}`)
         const data = await res.json()
         if (data.greeting) setGreeting(data.greeting)
         if (data.userName) setUserName(data.userName)
@@ -229,7 +230,8 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
   // Keep the hero recommendation aligned to the user's current local time.
   useEffect(() => {
     const updateCurrentMeal = () => {
-      const hour = new Date().getHours()
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'
+      const hour = Number(new Intl.DateTimeFormat('en-US', { hour: '2-digit', hourCycle: 'h23', timeZone }).format(new Date()))
       const slot = hour >= 5 && hour < 11 ? 'breakfast'
         : hour >= 11 && hour < 15 ? 'lunch'
         : hour >= 15 && hour < 19 ? 'high_tea'

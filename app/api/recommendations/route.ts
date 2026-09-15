@@ -8,6 +8,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('userId') || 'default_user'
     const mealTypeParam = searchParams.get('mealType') // optional
+    const requestedTimeZone = searchParams.get('timeZone') || 'Asia/Kolkata'
+    let timeZone = 'Asia/Kolkata'
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: requestedTimeZone }).format()
+      timeZone = requestedTimeZone
+    } catch {}
 
     // Fetch user preferences
     const { data: userPref } = await supabase
@@ -80,7 +86,9 @@ export async function GET(req: NextRequest) {
     const dinner = personalized.filter(r => r.meal_type === 'dinner')
 
     // Determine current time-based context
-    const currentHour = new Date().getHours()
+    const currentHour = Number(new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit', hourCycle: 'h23', timeZone,
+    }).format(new Date()))
     let contextualSlot: 'breakfast' | 'lunch' | 'high_tea' | 'dinner' = 'dinner'
     let greeting = 'Good Evening'
 
@@ -99,7 +107,9 @@ export async function GET(req: NextRequest) {
     }
 
     // Check active meal plan for today
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric', month: '2-digit', day: '2-digit', timeZone,
+    }).format(new Date())
     const { data: activePlans } = await supabase
       .from('meal_plans')
       .select('*, recipes(id, name, title, image_url, cook_time_minutes, prep_time_minutes)')
