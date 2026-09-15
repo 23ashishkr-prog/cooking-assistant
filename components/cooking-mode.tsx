@@ -609,8 +609,8 @@ export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: Cookin
             </div>
           )}
 
-          {visibleIngredients.length > 0 && <section className="rounded-[1.75rem] border border-[#eadfd4] bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.22em] text-[#f4510b]">From your fridge</p><h3 className="mt-1 text-sm font-black text-[#251f27]">Ingredients for this recipe</h3></div><span className="rounded-full bg-[#eef6f0] px-2.5 py-1 text-[10px] font-bold text-[#287044]">{visibleIngredients.length} ready</span></div>
+          {visibleIngredients.length > 0 && <section className="relative -mt-8 rounded-[2rem] border border-[#eadfd4] bg-white p-4 shadow-[0_-10px_35px_rgba(47,31,24,.12)] sm:p-5">
+            <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#ddd5cd]"/><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.22em] text-[#f4510b]">Fridge</p><h3 className="mt-1 text-sm font-black text-[#251f27]">Ready for this step</h3></div><span className="rounded-full bg-[#eef6f0] px-2.5 py-1 text-[10px] font-bold text-[#287044]">✓ {visibleIngredients.length} items</span></div>
             <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
               {visibleIngredients.map((item, index) => { const name = ingredientName(item); return <div key={`${name}-${index}`} className="min-w-20 text-center"><div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#fff8f1] to-[#f3e8dc] text-3xl shadow-inner ring-1 ring-[#eadfd4]">{ingredientEmoji(name)}</div><p className="mt-2 line-clamp-2 text-[10px] font-bold leading-tight text-[#514a50]">{name}</p></div> })}
             </div>
@@ -692,7 +692,7 @@ export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: Cookin
             className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ded9cf] bg-white py-2.5 text-xs font-semibold text-[#b25537] hover:bg-[#fbf7f4] transition shadow-xs"
           >
             <Bot className="size-4 text-[#b25537]" />
-            <span>🤖 Ask AI (&ldquo;My gravy is too thick&rdquo; / &ldquo;Substitute paneer&rdquo;)</span>
+            <span>Ask Moaka AI about this step</span>
           </button>
 
           {/* Giant DONE button */}

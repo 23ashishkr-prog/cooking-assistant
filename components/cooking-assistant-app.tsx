@@ -31,6 +31,7 @@ import {
   ShoppingBag,
   SlidersHorizontal,
   Camera,
+  LogOut,
   Images,
   ScanLine,
 } from 'lucide-react'
@@ -39,6 +40,7 @@ import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
 import { CommunityFeed } from './community-feed'
 import { RecipeImage } from './recipe-image'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { cuisineFallbackImage, recipeContainsExcludedMeat, recipeMatchesDietPreference } from '@/lib/recipe-personalization'
 
 export type RecipeItem = {
@@ -244,6 +246,31 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
     const timer = window.setInterval(updateCurrentMeal, 60_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  // Repair missing and duplicated recipe images gradually to stay within serverless limits.
+  useEffect(() => {
+    if (window.sessionStorage.getItem('moaka-image-repair-started')) return
+    window.sessionStorage.setItem('moaka-image-repair-started', '1')
+    let cancelled = false
+    const repair = async () => {
+      for (let index = 0; index < 100 && !cancelled; index += 1) {
+        try {
+          const response = await fetch('/api/recipes/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ repairNext: true }) })
+          const data = await response.json()
+          if (!response.ok || data.complete) break
+        } catch { break }
+      }
+    }
+    repair()
+    return () => { cancelled = true }
+  }, [])
+
+  const handleLogout = async () => {
+    const supabase = createBrowserSupabaseClient()
+    await supabase.auth.signOut()
+    window.localStorage.removeItem('moaka-week-plan')
+    window.location.assign('/login')
+  }
 
   // Fetch meal plans
   const loadMealPlans = async () => {
@@ -1659,7 +1686,7 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
         {activeTab === 'profile' && (
           <div className="moaka-tab space-y-6">
             <div className="rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs">
-              <p className="text-xs font-bold uppercase tracking-widest text-[#b25537]">Preferences &amp; Management</p>
+              <div className="flex items-start justify-between gap-4"><p className="text-xs font-bold uppercase tracking-widest text-[#b25537]">Preferences &amp; Management</p><button type="button" onClick={handleLogout} className="flex items-center gap-1.5 rounded-xl border border-[#f0c9bb] bg-[#fff5f0] px-3 py-2 text-xs font-bold text-[#b73708] transition hover:bg-[#ffe8dd]"><LogOut className="size-4"/> Logout</button></div>
               <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#223129]">
                 User Profile &amp; Food Persona
               </h1>

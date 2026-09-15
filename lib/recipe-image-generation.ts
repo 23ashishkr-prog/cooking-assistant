@@ -24,7 +24,11 @@ export async function generateAndStoreRecipeImage(recipeId: string, force = fals
 
   for (const model of IMAGE_MODELS) {
     try {
-      const response = await ai.models.generateContent({ model, contents: prompt })
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: { responseModalities: ['TEXT', 'IMAGE'] },
+      })
       const parts = response.candidates?.[0]?.content?.parts || []
       const imagePart = parts.find((part: any) => part.inlineData?.data)
       if (imagePart?.inlineData?.data) {
@@ -38,7 +42,16 @@ export async function generateAndStoreRecipeImage(recipeId: string, force = fals
   }
   if (!bytes) throw new Error('AI did not return an image')
 
-  await supabase.storage.createBucket('recipe-images', { public: true }).catch(() => undefined)
+  const { data: buckets, error: bucketListError } = await supabase.storage.listBuckets()
+  if (bucketListError) throw new Error(bucketListError.message)
+  if (!(buckets || []).some((bucket) => bucket.id === 'recipe-images')) {
+    const { error: bucketError } = await supabase.storage.createBucket('recipe-images', {
+      public: true,
+      allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+      fileSizeLimit: '10MB',
+    })
+    if (bucketError && !bucketError.message.toLowerCase().includes('already exists')) throw new Error(bucketError.message)
+  }
   const extension = mimeType.includes('jpeg') ? 'jpg' : mimeType.includes('webp') ? 'webp' : 'png'
   const objectPath = `${recipeId.replace(/[^a-z0-9-_]/gi, '-')}.${extension}`
   const { error: uploadError } = await supabase.storage.from('recipe-images').upload(objectPath, bytes, {

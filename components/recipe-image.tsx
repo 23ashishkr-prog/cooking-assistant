@@ -22,5 +22,5 @@ export function RecipeImage({ recipe, regenerate = false, className = '', loadin
 
   useEffect(() => { setSrc(regenerate ? fallback : recipe.image_url || fallback) }, [recipe.image_url, fallback, regenerate])
 
-  return <img src={src} alt={recipe.name || recipe.title || 'Recipe'} className={className} loading={loading} onError={() => setSrc(fallback)} />
+  return <img src={src} alt={recipe.name || recipe.title || 'Recipe'} className={`block ${className}`} loading={loading} onError={() => setSrc(fallback)} />
 }
