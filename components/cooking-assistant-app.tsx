@@ -247,24 +247,6 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
     return () => window.clearInterval(timer)
   }, [])
 
-  // Repair missing and duplicated recipe images gradually to stay within serverless limits.
-  useEffect(() => {
-    if (window.sessionStorage.getItem('moaka-image-repair-started')) return
-    window.sessionStorage.setItem('moaka-image-repair-started', '1')
-    let cancelled = false
-    const repair = async () => {
-      for (let index = 0; index < 100 && !cancelled; index += 1) {
-        try {
-          const response = await fetch('/api/recipes/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ repairNext: true }) })
-          const data = await response.json()
-          if (!response.ok || data.complete) break
-        } catch { break }
-      }
-    }
-    repair()
-    return () => { cancelled = true }
-  }, [])
-
   const handleLogout = async () => {
     const supabase = createBrowserSupabaseClient()
     await supabase.auth.signOut()
@@ -1593,15 +1575,11 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
                         {(
                           <div className="relative mb-2 h-24 w-full overflow-hidden rounded-xl bg-[#e8e4db]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={rec.image_url || cuisineFallbackImage(rec.cuisine)}
-                              alt={rec.name}
+                            <RecipeImage
+                              recipe={rec}
+                              regenerate={!rec.image_url || repeatedImageUrls.has(rec.image_url)}
                               className="size-full object-cover"
                               loading="lazy"
-                              onError={(event) => {
-                                event.currentTarget.onerror = null
-                                event.currentTarget.src = cuisineFallbackImage(rec.cuisine)
-                              }}
                             />
                           </div>
                         )}
