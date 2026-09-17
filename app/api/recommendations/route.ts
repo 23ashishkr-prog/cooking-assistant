@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { GoogleGenAI } from '@google/genai'
+import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText, recipeContainsExcludedMeat, recipeMatchesDietPreference } from '@/lib/recipe-personalization'
 
 export async function GET(req: NextRequest) {
   try {
@@ -8,6 +8,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('userId') || 'default_user'
     const mealTypeParam = searchParams.get('mealType') // optional
+    const requestedTimeZone = searchParams.get('timeZone') || 'Asia/Kolkata'
+    let timeZone = 'Asia/Kolkata'
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: requestedTimeZone }).format()
+      timeZone = requestedTimeZone
+    } catch {}
 
     // Fetch user preferences
     const { data: userPref } = await supabase
@@ -22,7 +28,7 @@ export async function GET(req: NextRequest) {
       .select(`
         id, name, title, description, meal_type, category, cuisine, diet_type, difficulty,
         prep_time_minutes, prep_time, cook_time_minutes, cook_time, total_time_minutes,
-        default_servings, servings, image_url, tips, tags
+        default_servings, servings, image_url, calories, nutrition_score, tips, tags, ingredients
       `)
       .order('created_at', { ascending: false })
 
@@ -48,17 +54,41 @@ export async function GET(req: NextRequest) {
       total_time: r.total_time_minutes || (r.prep_time_minutes || 15) + (r.cook_time_minutes || 20),
       servings: r.default_servings || r.servings || 4,
       image_url: r.image_url,
+      calories: r.calories,
+      nutrition_score: r.nutrition_score,
       tips: r.tips,
+      ingredients: r.ingredients || [],
     }))
 
+    const preferredCuisines = userPref?.cuisines || []
+    const blockedIngredients = [
+      ...(userPref?.allergies || []),
+      ...(userPref?.dislikes || []),
+      ...(userPref?.avoided_ingredients || []),
+    ].map((value: string) => value.toLowerCase())
+    const selectedDiet = String(userPref?.diet_type || '').toLowerCase()
+    const filtered = normalized.filter(recipe => {
+      const dietMatches = recipeMatchesDietPreference(recipe, selectedDiet)
+      const cuisineMatches = cuisineMatchesPreference(recipe.cuisine, preferredCuisines)
+      const timeMatches = !userPref?.max_cook_time || recipe.total_time <= userPref.max_cook_time
+      const recipeIngredients = ingredientText(recipe)
+      const safeForUser = !blockedIngredients.some((ingredient: string) => recipeIngredients.includes(ingredient))
+      const allowedMeat = !recipeContainsExcludedMeat(recipe, userPref?.excluded_meats || [])
+      return dietMatches && cuisineMatches && timeMatches && safeForUser && allowedMeat
+    })
+    const favorites = userPref?.favorite_ingredients || []
+    const personalized = [...filtered].sort((a, b) => favoriteIngredientScore(b, favorites) - favoriteIngredientScore(a, favorites))
+
     // Organize by meal slot
-    const breakfast = normalized.filter(r => r.meal_type === 'breakfast')
-    const lunch = normalized.filter(r => r.meal_type === 'lunch')
-    const high_tea = normalized.filter(r => r.meal_type === 'high_tea')
-    const dinner = normalized.filter(r => r.meal_type === 'dinner')
+    const breakfast = personalized.filter(r => r.meal_type === 'breakfast')
+    const lunch = personalized.filter(r => r.meal_type === 'lunch')
+    const high_tea = personalized.filter(r => r.meal_type === 'high_tea')
+    const dinner = personalized.filter(r => r.meal_type === 'dinner')
 
     // Determine current time-based context
-    const currentHour = new Date().getHours()
+    const currentHour = Number(new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit', hourCycle: 'h23', timeZone,
+    }).format(new Date()))
     let contextualSlot: 'breakfast' | 'lunch' | 'high_tea' | 'dinner' = 'dinner'
     let greeting = 'Good Evening'
 
@@ -77,7 +107,9 @@ export async function GET(req: NextRequest) {
     }
 
     // Check active meal plan for today
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric', month: '2-digit', day: '2-digit', timeZone,
+    }).format(new Date())
     const { data: activePlans } = await supabase
       .from('meal_plans')
       .select('*, recipes(id, name, title, image_url, cook_time_minutes, prep_time_minutes)')
@@ -104,10 +136,10 @@ export async function GET(req: NextRequest) {
       activePlan,
       pendingTasks: pendingTasks || [],
       dailySlots: {
-        breakfast: breakfast[0] || normalized[0],
-        lunch: lunch[0] || normalized[1],
-        high_tea: high_tea[0] || normalized[2],
-        dinner: dinner[0] || normalized[3],
+        breakfast: breakfast[0] || personalized[0] || null,
+        lunch: lunch[0] || personalized[1] || personalized[0] || null,
+        high_tea: high_tea[0] || personalized[2] || personalized[0] || null,
+        dinner: dinner[0] || personalized[3] || personalized[0] || null,
       },
       allSlots: {
         breakfast,

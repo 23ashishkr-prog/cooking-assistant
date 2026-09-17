@@ -19,10 +19,10 @@ import {
   Sun,
   Trash2,
   Utensils,
-  Volume2,
   X,
 } from 'lucide-react'
 import type { RecipeItem, InventoryItem, MealPlanItem } from './cooking-assistant-app'
+import { cuisineFallbackImage } from '@/lib/recipe-personalization'
 
 export type NightPrepTask = {
   id: string
@@ -51,8 +51,10 @@ interface TomorrowPlanNightPrepProps {
   inventory: InventoryItem[]
   onRefreshPlans?: () => void
   onAddInventoryItem?: (name: string, qty: number, unit: string) => void
+  onRemoveInventoryItem?: (id: string) => void
   onStartCooking?: (recipe: RecipeItem) => void
   onSelectRecipeForPlan?: (recipe: RecipeItem) => void
+  onSwapTomorrowMeal?: (slot: 'breakfast' | 'lunch' | 'high_tea' | 'dinner', recipe: RecipeItem, plannedDate: string, plannedTime: string) => Promise<void>
 }
 
 export function TomorrowPlanNightPrep({
@@ -61,8 +63,10 @@ export function TomorrowPlanNightPrep({
   inventory,
   onRefreshPlans,
   onAddInventoryItem,
+  onRemoveInventoryItem,
   onStartCooking,
   onSelectRecipeForPlan,
+  onSwapTomorrowMeal,
 }: TomorrowPlanNightPrepProps) {
   // Use UTC and an explicit locale so the server and browser render the same date.
   const tomorrowDate = useMemo(() => {
@@ -90,114 +94,60 @@ export function TomorrowPlanNightPrep({
     lunch: RecipeItem | null
     high_tea: RecipeItem | null
     dinner: RecipeItem | null
-  }>(() => {
-    // Check if plans exist for tomorrow
-    const tPlans = mealPlans.filter((p) => p.planned_date === tomorrowStr)
-    const bPlan = tPlans.find((p) => p.meal_type === 'breakfast')
-    const lPlan = tPlans.find((p) => p.meal_type === 'lunch')
-    const hPlan = tPlans.find((p) => p.meal_type === 'high_tea')
-    const dPlan = tPlans.find((p) => p.meal_type === 'dinner')
-
-    const findRec = (plan?: MealPlanItem, fallbackType?: string) => {
-      if (plan?.recipe_id) {
-        const found = recipes.find((r) => r.id === plan.recipe_id)
-        if (found) return found
-      }
-      return recipes.find((r) => r.meal_type === fallbackType) || recipes[0] || null
-    }
-
-    return {
-      breakfast: findRec(bPlan, 'breakfast'),
-      lunch: findRec(lPlan, 'lunch'),
-      high_tea: findRec(hPlan, 'high_tea'),
-      dinner: findRec(dPlan, 'dinner'),
-    }
-  })
+  }>({ breakfast: null, lunch: null, high_tea: null, dinner: null })
 
   // Synchronize when recipes or mealPlans load
   useEffect(() => {
-    if (recipes.length > 0) {
-      setTomorrowMeals((prev) => ({
-        breakfast: prev.breakfast || recipes.find((r) => r.meal_type === 'breakfast') || recipes[0] || null,
-        lunch: prev.lunch || recipes.find((r) => r.meal_type === 'lunch') || recipes[1] || recipes[0] || null,
-        high_tea: prev.high_tea || recipes.find((r) => r.meal_type === 'high_tea') || recipes[2] || recipes[0] || null,
-        dinner: prev.dinner || recipes.find((r) => r.meal_type === 'dinner') || recipes[3] || recipes[0] || null,
-      }))
+    const tomorrowPlans = mealPlans.filter((plan) => plan.planned_date === tomorrowStr)
+    const plannedRecipe = (slot: string) => {
+      const plan = tomorrowPlans.find((item) => item.meal_type === slot)
+      if (!plan) return null
+      return (plan.recipes as RecipeItem | undefined) || recipes.find((recipe) => recipe.id === plan.recipe_id) || null
     }
+    setTomorrowMeals({
+      breakfast: plannedRecipe('breakfast'),
+      lunch: plannedRecipe('lunch'),
+      high_tea: plannedRecipe('high_tea'),
+      dinner: plannedRecipe('dinner'),
+    })
   }, [recipes, mealPlans, tomorrowStr])
 
   // Active sub-tab inside this component
   const [subTab, setSubTab] = useState<'prep' | 'items' | 'plan'>('prep')
 
   // Night Prep Tasks State
-  const defaultNightTasks: NightPrepTask[] = useMemo(
-    () => [
-      {
-        id: 'task-soak-beans',
-        title: 'Soak Beans / Lentils in Warm Water',
-        description: 'Rajma/chickpeas need 8–10 hours soaking overnight to cook soft and digestible tomorrow.',
-        category: 'soak',
-        forMeal: 'lunch',
-        isDone: false,
-        urgent: true,
-        estimatedMinutes: 5,
-      },
-      {
-        id: 'task-marinate-paneer',
-        title: 'Marinate Paneer / Veggies & Chill',
-        description: 'Toss paneer or veggies in yogurt, roasted cumin & chili powder; seal in container in fridge.',
-        category: 'marinate',
-        forMeal: 'dinner',
-        isDone: false,
-        urgent: true,
-        estimatedMinutes: 10,
-      },
-      {
-        id: 'task-defrost-greens',
-        title: 'Transfer Frozen Peas & Herbs to Fridge',
-        description: 'Move frozen green peas, corn or stock from freezer to refrigerator lower shelf to thaw slowly.',
-        category: 'defrost',
-        forMeal: 'lunch',
-        isDone: false,
-        urgent: false,
-        estimatedMinutes: 2,
-      },
-      {
-        id: 'task-prep-breakfast',
-        title: 'Overnight Oats / Batter Check',
-        description: 'Assemble rolled oats with milk & chia seeds in a jar, or check fermented batter fermentation.',
-        category: 'ferment',
-        forMeal: 'breakfast',
-        isDone: false,
-        urgent: true,
-        estimatedMinutes: 5,
-      },
-    ],
-    []
-  )
+  const defaultNightTasks: NightPrepTask[] = useMemo(() => mealPlans
+    .filter((plan) => plan.planned_date === tomorrowStr)
+    .flatMap((plan) => (plan.tasks || []).map((task) => ({
+      id: task.id,
+      title: task.task_name,
+      description: task.description || `Prepare for tomorrow's ${plan.meal_type}.`,
+      category: 'custom' as const,
+      forMeal: plan.meal_type as NightPrepTask['forMeal'],
+      isDone: task.status === 'completed',
+      urgent: true,
+      estimatedMinutes: 10,
+    }))), [mealPlans, tomorrowStr])
 
-  const [nightTasks, setNightTasks] = useState<NightPrepTask[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('mise_night_prep_tasks')
-        if (saved) return JSON.parse(saved)
-      } catch (e) {
-        console.warn('Failed to parse night prep tasks', e)
-      }
-    }
-    return defaultNightTasks
-  })
+  const [nightTasks, setNightTasks] = useState<NightPrepTask[]>([])
+
+  useEffect(() => {
+    setNightTasks((current) => defaultNightTasks.map((task) => ({
+      ...task,
+      isDone: current.find((item) => item.id === task.id)?.isDone ?? task.isDone,
+    })))
+  }, [defaultNightTasks])
 
   // Save tasks to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('mise_night_prep_tasks', JSON.stringify(nightTasks))
+        localStorage.setItem(`moaka_night_prep_${tomorrowStr}`, JSON.stringify(nightTasks))
       } catch (e) {
         console.warn('Failed to save night prep tasks', e)
       }
     }
-  }, [nightTasks])
+  }, [nightTasks, tomorrowStr])
 
   // New task input state
   const [showAddTask, setShowAddTask] = useState(false)
@@ -206,61 +156,54 @@ export function TomorrowPlanNightPrep({
   const [newTaskMeal, setNewTaskMeal] = useState<'breakfast' | 'lunch' | 'high_tea' | 'dinner' | 'general'>('lunch')
 
   // Item Checklist for Tomorrow State
-  const defaultItems: TomorrowIngredient[] = useMemo(
-    () => [
-      { id: 'item-1', name: 'Rajma / Red Kidney Beans', amount: '250g', mealSlot: 'lunch', inPantry: true, checked: false },
-      { id: 'item-2', name: 'Fresh Paneer Block', amount: '250g', mealSlot: 'dinner', inPantry: true, checked: false },
-      { id: 'item-3', name: 'Basmati Long-Grain Rice', amount: '2 cups', mealSlot: 'lunch', inPantry: true, checked: false },
-      { id: 'item-4', name: 'Rolled Oats & Chia Seeds', amount: '1 cup', mealSlot: 'breakfast', inPantry: true, checked: false },
-      { id: 'item-5', name: 'Ripe Tomatoes & Onions', amount: '4 each', mealSlot: 'lunch', inPantry: true, checked: false },
-      { id: 'item-6', name: 'Ginger-Garlic Paste / Fresh Root', amount: '50g', mealSlot: 'dinner', inPantry: true, checked: false },
-      { id: 'item-7', name: 'Fresh Milk or Almond Milk', amount: '500ml', mealSlot: 'breakfast', inPantry: true, checked: false },
-      { id: 'item-8', name: 'Ghee or Cooking Butter', amount: '3 tbsp', mealSlot: 'dinner', inPantry: true, checked: false },
-      { id: 'item-9', name: 'Fresh Coriander / Cilantro', amount: '1 bunch', mealSlot: 'dinner', inPantry: false, checked: false },
-      { id: 'item-10', name: 'Cardamom & Chai Spices', amount: '10g', mealSlot: 'high_tea', inPantry: true, checked: false },
-    ],
-    []
-  )
+  const defaultItems: TomorrowIngredient[] = useMemo(() => {
+    const seen = new Set<string>()
+    return (Object.entries(tomorrowMeals) as [TomorrowIngredient['mealSlot'], RecipeItem | null][])
+      .flatMap(([mealSlot, recipe]) => (recipe?.ingredients || []).map((ingredient: any, index) => {
+        const name = String(ingredient?.name || ingredient?.ingredient_name || ingredient || '').trim()
+        return {
+          id: `${recipe?.id}-${index}`,
+          name,
+          amount: String(ingredient?.measure || ingredient?.quantity || 'as needed'),
+          mealSlot,
+          inPantry: false,
+          checked: false,
+        }
+      }))
+      .filter((item) => item.name && !seen.has(item.name.toLowerCase()) && seen.add(item.name.toLowerCase()))
+  }, [tomorrowMeals])
 
-  const [itemsChecklist, setItemsChecklist] = useState<TomorrowIngredient[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('mise_tomorrow_items')
-        if (saved) return JSON.parse(saved)
-      } catch (e) {
-        console.warn('Failed to parse tomorrow items', e)
-      }
-    }
-    return defaultItems
-  })
+  const [itemsChecklist, setItemsChecklist] = useState<TomorrowIngredient[]>([])
+
+  useEffect(() => {
+    setItemsChecklist((current) => defaultItems.map((item) => ({
+      ...item,
+      checked: current.find((saved) => saved.name.toLowerCase() === item.name.toLowerCase())?.checked || false,
+    })))
+  }, [defaultItems])
 
   // Save items to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('mise_tomorrow_items', JSON.stringify(itemsChecklist))
+        localStorage.setItem(`moaka_tomorrow_items_${tomorrowStr}`, JSON.stringify(itemsChecklist))
       } catch (e) {
         console.warn('Failed to save tomorrow items', e)
       }
     }
-  }, [itemsChecklist])
+  }, [itemsChecklist, tomorrowStr])
 
-  // Update inPantry flags based on user's actual inventory
+  // Sync availability to the actual inventory. This intentionally supports rollback.
   useEffect(() => {
-    if (inventory.length > 0) {
-      setItemsChecklist((prev) =>
-        prev.map((item) => {
-          const matchingInv = inventory.find((inv) =>
-            item.name.toLowerCase().includes(inv.ingredient_name.toLowerCase()) ||
-            inv.ingredient_name.toLowerCase().includes(item.name.toLowerCase())
-          )
-          return {
-            ...item,
-            inPantry: !!matchingInv || item.inPantry,
-          }
-        })
-      )
-    }
+    setItemsChecklist((prev) =>
+      prev.map((item) => {
+        const matchingInv = inventory.find((inv) =>
+          item.name.toLowerCase().includes(inv.ingredient_name.toLowerCase()) ||
+          inv.ingredient_name.toLowerCase().includes(item.name.toLowerCase())
+        )
+        return { ...item, inPantry: !!matchingInv }
+      })
+    )
   }, [inventory])
 
   // New item input state
@@ -271,10 +214,14 @@ export function TomorrowPlanNightPrep({
   // The selected prep deadline is the source of truth for the countdown and alert copy.
   const [reminderTime, setReminderTime] = useState('23:00')
   const deadlineOptions = [
+    { value: '20:00', label: '8:00 PM' },
+    { value: '20:30', label: '8:30 PM' },
     { value: '21:00', label: '9:00 PM' },
+    { value: '21:30', label: '9:30 PM' },
     { value: '22:00', label: '10:00 PM' },
     { value: '22:30', label: '10:30 PM' },
     { value: '23:00', label: '11:00 PM' },
+    { value: '23:30', label: '11:30 PM' },
     { value: '23:45', label: '11:45 PM' },
   ] as const
 
@@ -338,7 +285,6 @@ export function TomorrowPlanNightPrep({
   // Reminder Alert Settings & State
   const [reminderEnabled, setReminderEnabled] = useState(true)
   const [reminderNotificationFired, setReminderNotificationFired] = useState(false)
-  const [showReminderModal, setShowReminderModal] = useState(false)
   const [reminderTriggerNotice, setReminderTriggerNotice] = useState<string | null>(null)
 
   // Web Audio Chime player
@@ -383,12 +329,11 @@ export function TomorrowPlanNightPrep({
   const pendingItemsCount = useMemo(() => itemsChecklist.filter((i) => !i.checked).length, [itemsChecklist])
   const missingPantryCount = useMemo(() => itemsChecklist.filter((i) => !i.inPantry).length, [itemsChecklist])
 
-  // Trigger the selected prep deadline reminder manually or automatically.
+  // Keep reminders inline so opening the page never interrupts the user.
   const handleTriggerReminder = () => {
     playGentleChime()
-    setShowReminderModal(true)
     setReminderNotificationFired(true)
-    setReminderTriggerNotice(`Reminder alert active: check your night prep tasks and required ingredients before ${reminderTimeLabel}.`)
+    setReminderTriggerNotice(`Prep check: ${pendingTasksCount} tasks and ${pendingItemsCount} items before ${reminderTimeLabel}.`)
   }
 
   useEffect(() => {
@@ -463,6 +408,21 @@ export function TomorrowPlanNightPrep({
     }
   }
 
+  const handleMarkItemMissing = (item: TomorrowIngredient) => {
+    setItemsChecklist((prev) =>
+      prev.map((entry) => (entry.id === item.id ? { ...entry, inPantry: false, checked: false } : entry))
+    )
+
+    const matchingInventory = inventory.find((inventoryItem) =>
+      item.name.toLowerCase().includes(inventoryItem.ingredient_name.toLowerCase()) ||
+      inventoryItem.ingredient_name.toLowerCase().includes(item.name.toLowerCase())
+    )
+
+    if (matchingInventory) {
+      onRemoveInventoryItem?.(matchingInventory.id)
+    }
+  }
+
   // Mark all items as checked/ready
   const handleMarkAllItemsReady = () => {
     setItemsChecklist((prev) => prev.map((i) => ({ ...i, checked: true })))
@@ -474,14 +434,20 @@ export function TomorrowPlanNightPrep({
   }
 
   // Change a tomorrow meal slot
-  const handleSwapTomorrowMeal = (slot: 'breakfast' | 'lunch' | 'high_tea' | 'dinner', recipe: RecipeItem) => {
+  const handleSwapTomorrowMeal = async (slot: 'breakfast' | 'lunch' | 'high_tea' | 'dinner', recipe: RecipeItem, plannedTime: string) => {
     setTomorrowMeals((prev) => ({ ...prev, [slot]: recipe }))
+    try {
+      await onSwapTomorrowMeal?.(slot, recipe, tomorrowStr, plannedTime)
+    } catch (error) {
+      console.warn('Could not save tomorrow meal swap:', error)
+      onRefreshPlans?.()
+    }
   }
 
   return (
     <div
       id="tomorrow-plan-night-prep-section"
-      className="rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs space-y-5"
+      className="mise-prep-panel rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs space-y-5"
     >
       {/* 1. Header with Live Prep Deadline Countdown & Reminder Status */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-[#f0ece3] pb-5">
@@ -499,10 +465,10 @@ export function TomorrowPlanNightPrep({
           </div>
 
           <h2 className="mt-1 font-serif text-xl sm:text-2xl font-bold tracking-tight text-[#223129]">
-            Tomorrow&apos;s Plan, Night Prep &amp; Item Checklist
+            Prep tonight. Cruise tomorrow.
           </h2>
           <p className="mt-1 text-xs text-[#736e65] max-w-2xl">
-            Get everything pre-ready tonight (soak beans, marinate, chill oats) and verify required items before your chosen deadline so tomorrow runs completely stress-free.
+            Finish the essentials before your deadline.
           </p>
         </div>
 
@@ -536,32 +502,21 @@ export function TomorrowPlanNightPrep({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-[#ded9cf] bg-[#fffdf9] px-2.5 py-1.5">
-            <span className="text-[10px] font-semibold text-[#736e65]">Deadline</span>
-            {deadlineOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => updateReminderTime(option.value)}
-                aria-pressed={reminderTime === option.value}
-                className={`rounded-lg px-2 py-1 text-[10px] font-bold transition ${
-                  reminderTime === option.value
-                    ? 'bg-[#223129] text-white'
-                    : 'text-[#736e65] hover:bg-[#faede6] hover:text-[#934329]'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-            <label htmlFor="night-reminder-time" className="sr-only">Choose your prep deadline</label>
-            <input
+          <div className="mise-deadline-select flex items-center gap-2 rounded-2xl border border-[#ded9cf] bg-[#fffdf9] px-3 py-2">
+            <label htmlFor="night-reminder-time" className="text-[10px] font-bold uppercase tracking-wider text-[#736e65]">
+              Deadline
+            </label>
+            <select
               id="night-reminder-time"
-              type="time"
               value={reminderTime}
               onChange={(event) => updateReminderTime(event.target.value)}
-              aria-label="Choose your exact prep deadline"
-              className="bg-transparent text-xs font-bold text-[#223129] outline-none"
-            />
+              aria-label="Choose prep deadline"
+              className="cursor-pointer bg-transparent pr-6 text-xs font-extrabold text-[#223129] outline-none"
+            >
+              {deadlineOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Test / Manual Reminder Button */}
@@ -570,10 +525,10 @@ export function TomorrowPlanNightPrep({
             id="test-prep-deadline-reminder-btn"
             onClick={handleTriggerReminder}
             className="rounded-2xl bg-[#223129] hover:bg-[#15201a] text-white px-3.5 py-2 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs"
-            title="Preview prep deadline reminder alarm and checklist status"
+            title="Show prep reminder"
           >
             <BellRing className="size-3.5 text-[#df9776]" />
-            <span>Reminder Alert</span>
+            <span>Check prep</span>
           </button>
         </div>
       </div>
@@ -589,12 +544,7 @@ export function TomorrowPlanNightPrep({
               <Bell className="size-4 animate-bounce" />
             </span>
             <div>
-              <p className="font-bold text-[#7c2d12]">
-                Night-Before Alert: {pendingTasksCount} tasks &amp; {pendingItemsCount} items need your check before {reminderTimeLabel}!
-              </p>
-              <p className="text-[11px] text-[#9a3412]">
-                Soaking beans and defrosting require overnight duration. If delayed past your prep deadline, cooking time may double tomorrow.
-              </p>
+              <p className="font-bold text-[#7c2d12]">{reminderTriggerNotice}</p>
             </div>
           </div>
           <button
@@ -608,13 +558,13 @@ export function TomorrowPlanNightPrep({
       )}
 
       {/* 2. Sub-tab Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f0ece3] pb-2">
-        <div className="flex items-center gap-1.5">
+      <div className="flex flex-col gap-3 border-b border-[#f0ece3] pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-1.5">
           <button
             type="button"
             id="tab-night-prep-tasks"
             onClick={() => setSubTab('prep')}
-            className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition sm:min-h-0 sm:w-auto sm:justify-start sm:px-3.5 sm:py-1.5 ${
               subTab === 'prep'
                 ? 'bg-[#223129] text-white shadow-xs'
                 : 'bg-[#f0ece3] text-[#555047] hover:bg-[#e4ded3]'
@@ -633,7 +583,7 @@ export function TomorrowPlanNightPrep({
             type="button"
             id="tab-item-checklist"
             onClick={() => setSubTab('items')}
-            className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition sm:min-h-0 sm:w-auto sm:justify-start sm:px-3.5 sm:py-1.5 ${
               subTab === 'items'
                 ? 'bg-[#223129] text-white shadow-xs'
                 : 'bg-[#f0ece3] text-[#555047] hover:bg-[#e4ded3]'
@@ -656,7 +606,7 @@ export function TomorrowPlanNightPrep({
             type="button"
             id="tab-tomorrow-plan"
             onClick={() => setSubTab('plan')}
-            className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition sm:min-h-0 sm:w-auto sm:justify-start sm:px-3.5 sm:py-1.5 ${
               subTab === 'plan'
                 ? 'bg-[#223129] text-white shadow-xs'
                 : 'bg-[#f0ece3] text-[#555047] hover:bg-[#e4ded3]'
@@ -669,7 +619,7 @@ export function TomorrowPlanNightPrep({
 
         {/* Quick Batch Action */}
         {subTab === 'prep' && (
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
             <button
               type="button"
               onClick={() => setShowAddTask((prev) => !prev)}
@@ -689,11 +639,11 @@ export function TomorrowPlanNightPrep({
         )}
 
         {subTab === 'items' && (
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
             <button
               type="button"
               onClick={handleMarkAllItemsReady}
-              className="text-xs text-[#2e7d32] font-semibold hover:underline"
+              className="min-h-10 rounded-xl border border-[#c9dfcf] bg-[#f4faf5] px-3 text-xs font-semibold text-[#2e7d32] transition hover:bg-[#e8f5eb] sm:min-h-0 sm:border-0 sm:bg-transparent sm:px-0 sm:hover:bg-transparent sm:hover:underline"
             >
               Mark All Have ✓
             </button>
@@ -714,7 +664,7 @@ export function TomorrowPlanNightPrep({
                 </span>
               </div>
               <p className="text-[11px] text-[#736e65] mt-0.5">
-                Complete these tonight before your prep deadline to ensure tomorrow&apos;s cooking takes 50% less time.
+                Priority prep for tomorrow.
               </p>
             </div>
 
@@ -883,7 +833,7 @@ export function TomorrowPlanNightPrep({
           <div className="rounded-2xl border border-[#faede6] bg-[#fdfaf7] p-3.5 flex items-center gap-3 text-xs text-[#736e65]">
             <Sparkles className="size-4 text-[#df9776] shrink-0" />
             <p>
-              <strong>Why night prep matters:</strong> Beans soaked for 8+ hours cook in 15 minutes instead of 45, and paneer marinated overnight absorbs 3x more flavor. The midnight reminder ensures you don&apos;t wake up to an unprepared kitchen!
+              Tomorrow&apos;s preparation and ingredients will appear here after a meal is planned.
             </p>
           </div>
         </div>
@@ -993,9 +943,14 @@ export function TomorrowPlanNightPrep({
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   {item.inPantry ? (
-                    <span className="rounded-md bg-[#eef6f0] px-2 py-0.5 text-[10px] font-semibold text-[#245e38]">
-                      In Kitchen ✓
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleMarkItemMissing(item)}
+                      className="rounded-md bg-[#eef6f0] px-2 py-0.5 text-[10px] font-semibold text-[#245e38] hover:bg-[#fee2e2] hover:text-[#991b1b]"
+                      title="Mark as missing"
+                    >
+                      In Kitchen ✓ · Undo
+                    </button>
                   ) : (
                     <button
                       type="button"
@@ -1091,14 +1046,18 @@ export function TomorrowPlanNightPrep({
                     </div>
 
                     {/* Image */}
-                    {recipe.image_url && (
+                    {(
                       <div className="relative mb-2.5 h-24 w-full overflow-hidden rounded-xl bg-[#f0ece3]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={recipe.image_url}
+                          src={recipe.image_url || cuisineFallbackImage(recipe.cuisine)}
                           alt={recipe.name}
                           className="size-full object-cover group-hover:scale-105 transition duration-300"
                           loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.onerror = null
+                            event.currentTarget.src = cuisineFallbackImage(recipe.cuisine)
+                          }}
                         />
                       </div>
                     )}
@@ -1121,7 +1080,7 @@ export function TomorrowPlanNightPrep({
                       value={recipe.id}
                       onChange={(e) => {
                         const nextRec = recipes.find((r) => r.id === e.target.value)
-                        if (nextRec) handleSwapTomorrowMeal(key, nextRec)
+                        if (nextRec) handleSwapTomorrowMeal(key, nextRec, key === 'breakfast' ? '08:30' : key === 'lunch' ? '13:00' : key === 'high_tea' ? '17:00' : '20:30')
                       }}
                       className="text-[10px] rounded-lg border border-[#ded9cf] bg-[#fbf9f5] px-1.5 py-1 text-[#555047] focus:outline-none max-w-[100px] truncate"
                     >
@@ -1150,106 +1109,6 @@ export function TomorrowPlanNightPrep({
         </div>
       )}
 
-      {/* ======================= 4. MIDNIGHT REMINDER MODAL ======================= */}
-      {showReminderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-3xl border border-[#ded9cf] bg-white p-6 shadow-xl space-y-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-2xl bg-[#faede6] text-[#b25537]">
-                  <BellRing className="size-5 animate-pulse" />
-                </span>
-                <div>
-                  <h3 className="font-serif text-lg font-bold text-[#223129]">
-                    🌙 Night Prep Reminder Alert
-                  </h3>
-                  <p className="text-xs text-[#736e65]">
-                    Tomorrow is just around the corner. Check these before your prep deadline!
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowReminderModal(false)}
-                className="rounded-xl p-1 text-[#8d887d] hover:bg-[#f0ece3] transition"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            {/* Countdown Banner */}
-            <div className="rounded-2xl bg-[#223129] text-white p-3.5 flex items-center justify-between">
-              <span className="text-xs font-bold text-[#df9776]">Countdown to {reminderTime}:</span>
-              <span className="font-mono text-sm font-bold">
-                {String(timeLeftToReminder.hours).padStart(2, '0')}h :{' '}
-                {String(timeLeftToReminder.minutes).padStart(2, '0')}m :{' '}
-                {String(timeLeftToReminder.seconds).padStart(2, '0')}s
-              </span>
-            </div>
-
-            {/* Pending Tasks List in Modal */}
-            <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-[#736e65]">
-                Pending Night Tasks ({pendingTasksCount}):
-              </p>
-              {pendingTasksCount === 0 ? (
-                <div className="rounded-xl bg-[#eef6f0] p-3 text-xs font-semibold text-[#245e38] flex items-center gap-2">
-                  <CheckCircle2 className="size-4" />
-                  <span>All night prep tasks are completed! You are ready to rest.</span>
-                </div>
-              ) : (
-                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-                  {nightTasks
-                    .filter((t) => !t.isDone)
-                    .map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-center justify-between rounded-xl border border-[#ded9cf] p-2.5 text-xs bg-[#faf8f4]"
-                      >
-                        <span className="font-semibold text-[#223129]">{t.title}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleTask(t.id)}
-                          className="rounded-lg bg-[#b25537] px-2 py-1 text-[10px] font-bold text-white hover:bg-[#934329]"
-                        >
-                          Mark Done
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-
-            {/* Missing items warning */}
-            {missingPantryCount > 0 && (
-              <div className="rounded-xl bg-[#fff7ed] border border-[#fed7aa] p-3 text-xs text-[#9a3412]">
-                <strong>⚠️ Missing Pantry Alert:</strong> You have {missingPantryCount} ingredient(s) not confirmed in your kitchen pantry for tomorrow&apos;s meals.
-              </div>
-            )}
-
-            {/* Footer Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#f0ece3]">
-              <button
-                type="button"
-                onClick={() => {
-                  playGentleChime()
-                }}
-                className="rounded-xl border border-[#ded9cf] px-3.5 py-2 text-xs font-bold text-[#555047] hover:border-[#b25537] hover:text-[#b25537] transition flex items-center gap-1.5"
-              >
-                <Volume2 className="size-3.5" />
-                <span>Re-play Chime</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowReminderModal(false)}
-                className="rounded-xl bg-[#223129] px-4 py-2 text-xs font-bold text-white hover:bg-[#15201a] transition"
-              >
-                Got It, Finishing Up
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
         dislikes: ['Bitter gourd'],
         favorite_ingredients: ['Paneer', 'Tomatoes', 'Basmati Rice', 'Garlic'],
         avoided_ingredients: [],
+        excluded_meats: [],
         health_preferences: ['High Protein', 'Fresh Produce'],
       },
     })
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
     const { userId = 'default_user', profile, preferences } = body
 
     if (profile) {
-      await supabase
+      const { error } = await supabase
         .from('user_profiles')
         .upsert({
           user_id: userId,
@@ -51,11 +52,12 @@ export async function POST(req: NextRequest) {
           cooking_skill: profile.cooking_skill || 'Intermediate',
           preferred_cooking_time: Number(profile.preferred_cooking_time) || 30,
           updated_at: new Date().toISOString(),
-        })
+        }, { onConflict: 'user_id' })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     if (preferences) {
-      await supabase
+      const { error } = await supabase
         .from('user_food_preferences')
         .upsert({
           user_id: userId,
@@ -66,9 +68,11 @@ export async function POST(req: NextRequest) {
           dislikes: preferences.dislikes || [],
           favorite_ingredients: preferences.favorite_ingredients || [],
           avoided_ingredients: preferences.avoided_ingredients || [],
+          excluded_meats: preferences.excluded_meats || [],
           health_preferences: preferences.health_preferences || [],
           updated_at: new Date().toISOString(),
-        })
+        }, { onConflict: 'user_id' })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { GoogleGenAI } from '@google/genai'
+import { cuisineMatchesPreference, favoriteIngredientScore, ingredientText, recipeContainsExcludedMeat, recipeMatchesDietPreference } from '@/lib/recipe-personalization'
+import { deriveRecipePrepTasks } from '@/lib/recipe-preparation'
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,18 +18,44 @@ export async function POST(req: NextRequest) {
     // 2. Fetch available recipes in Supabase
     const { data: recipes } = await supabase
       .from('recipes')
-      .select('id, name, title, meal_type, category, prep_time_minutes, cook_time_minutes')
-      .limit(40)
+      .select('id, name, title, meal_type, category, cuisine, diet_type, prep_time_minutes, cook_time_minutes, total_time_minutes, ingredients')
+      .eq('published', true)
+      .order('id', { ascending: true })
+      .limit(230)
 
-    const recipePool = (recipes || []).map(r => ({
+    const selectedDiet = String(userPref?.diet_type || '').toLowerCase()
+    const preferredCuisines = userPref?.cuisines || []
+    const blocked = [...(userPref?.allergies || []), ...(userPref?.dislikes || []), ...(userPref?.avoided_ingredients || [])].map((value: string) => value.toLowerCase())
+    const eligibleRecipes = (recipes || []).filter((recipe: any) => {
+      const dietMatches = recipeMatchesDietPreference(recipe, selectedDiet)
+      const cuisineMatches = cuisineMatchesPreference(recipe.cuisine, preferredCuisines)
+      const timeMatches = !userPref?.max_cook_time || recipe.total_time_minutes <= userPref.max_cook_time
+      const safe = !blocked.some((ingredient: string) => ingredientText(recipe).includes(ingredient))
+      const allowedMeat = !recipeContainsExcludedMeat(recipe, userPref?.excluded_meats || [])
+      return dietMatches && cuisineMatches && timeMatches && safe && allowedMeat
+    })
+    const favorites = userPref?.favorite_ingredients || []
+    const recipePool = [...eligibleRecipes]
+      .sort((a, b) => {
+        const scoreDifference = favoriteIngredientScore(b, favorites) - favoriteIngredientScore(a, favorites)
+        if (scoreDifference !== 0) return scoreDifference
+        return String(a.name || a.title || a.id).localeCompare(String(b.name || b.title || b.id))
+      })
+      .map(r => ({
       id: r.id,
       name: r.name || r.title,
       meal_type: (r.meal_type || r.category || 'dinner').toLowerCase(),
-    }))
+      ingredients: r.ingredients || [],
+      prep_time_minutes: r.prep_time_minutes,
+      cook_time_minutes: r.cook_time_minutes,
+      }))
 
     const baseDate = startDate ? new Date(startDate) : new Date()
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     const createdPlans = []
+
+    if (recipePool.length === 0) {
+      return NextResponse.json({ error: 'No published recipes are available in Supabase.' }, { status: 503 })
+    }
 
     // Generate 7 days of plans
     for (let i = 0; i < 7; i++) {
@@ -37,33 +64,66 @@ export async function POST(req: NextRequest) {
       const dateStr = planDate.toISOString().split('T')[0]
 
       const slots = [
-        { type: 'breakfast', time: '08:30', defaultRecipe: 'rec-masala-dosa' },
-        { type: 'lunch', time: '13:00', defaultRecipe: 'rec-dal-tadka-rice' },
-        { type: 'high_tea', time: '17:00', defaultRecipe: 'rec-veg-grilled-sandwich' },
-        { type: 'dinner', time: '20:30', defaultRecipe: 'rec-paneer-butter-masala' },
+        { type: 'breakfast', time: '08:30' },
+        { type: 'lunch', time: '13:00' },
+        { type: 'high_tea', time: '17:00' },
+        { type: 'dinner', time: '20:30' },
       ]
 
       for (const slot of slots) {
         // Pick recipe matching meal_type or default
         const matches = recipePool.filter(r => r.meal_type === slot.type)
-        const chosen = matches.length > 0 ? matches[i % matches.length] : null
-        const recipeId = chosen ? chosen.id : slot.defaultRecipe
+        // Always use a real database recipe ID so foreign-key inserts cannot fail.
+        const candidates = matches.length > 0 ? matches : recipePool
+        const stableSeed = `${dateStr}:${slot.type}`
+          .split('')
+          .reduce((total, character) => total + character.charCodeAt(0), 0)
+        const chosen = candidates[stableSeed % candidates.length]
 
-        const { data: newPlan } = await supabase
+        const { data: newPlan, error: planError } = await supabase
           .from('meal_plans')
-          .insert({
+          .upsert({
             user_id: userId,
-            recipe_id: recipeId,
+            recipe_id: chosen.id,
             meal_type: slot.type,
             planned_date: dateStr,
             planned_time: slot.time,
             servings: 4,
             status: 'planned',
-          })
+          }, { onConflict: 'user_id,planned_date,meal_type' })
           .select()
           .single()
 
-        if (newPlan) createdPlans.push(newPlan)
+        if (planError) {
+          console.error('[Generate Week Insert Error]:', planError)
+          return NextResponse.json({
+            error: planError.message || `Could not create ${slot.type} for ${dateStr}`,
+            totalMealsCreated: createdPlans.length,
+          }, { status: 500 })
+        }
+        if (newPlan) {
+          createdPlans.push(newPlan)
+          const [hour, minute] = slot.time.split(':').map(Number)
+          const readyAt = new Date(`${dateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`)
+          const prepMinutes = Number(chosen.prep_time_minutes || 15)
+          const cookMinutes = Number(chosen.cook_time_minutes || 25)
+          const scheduledAt = new Date(readyAt.getTime() - (prepMinutes + cookMinutes) * 60_000)
+          await supabase.from('user_preparation_tasks').delete().eq('meal_plan_id', newPlan.id)
+          const derivedTasks = deriveRecipePrepTasks(chosen)
+          const { error: taskError } = await supabase.from('user_preparation_tasks').insert(
+            derivedTasks.map((task, taskIndex) => ({
+              user_id: userId,
+              meal_plan_id: newPlan.id,
+              task_name: task.task_name,
+              description: task.description,
+              scheduled_at: new Date(scheduledAt.getTime() - taskIndex * 10 * 60_000).toISOString(),
+              status: 'pending',
+            })),
+          )
+          if (taskError) {
+            console.error('[Generate Week Prep Task Error]:', taskError)
+          }
+        }
       }
     }
 

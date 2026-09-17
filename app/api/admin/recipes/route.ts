@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { cuisineFallbackImage } from '@/lib/recipe-personalization'
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,13 +46,11 @@ export async function POST(req: NextRequest) {
         diet_type,
         difficulty,
         prep_time_minutes: Number(prep_time_minutes) || 15,
-        prep_time: Number(prep_time_minutes) || 15,
         cook_time_minutes: Number(cook_time_minutes) || 20,
-        cook_time: Number(cook_time_minutes) || 20,
-        total_time_minutes: (Number(prep_time_minutes) || 15) + (Number(cook_time_minutes) || 20),
         default_servings: Number(default_servings) || 4,
-        servings: Number(default_servings) || 4,
-        image_url: image_url || 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop&q=80',
+        image_url: image_url || cuisineFallbackImage(cuisine),
+        ingredients,
+        instructions: steps,
         tips: tips || '',
         updated_at: new Date().toISOString(),
       })
@@ -70,7 +69,9 @@ export async function POST(req: NextRequest) {
         ingredient_name: typeof ing === 'string' ? ing : ing.name || ing.ingredient_name,
         quantity: typeof ing === 'object' ? ing.quantity || 1 : 1,
         unit: typeof ing === 'object' ? ing.unit || 'item' : 'item',
-        preparation: typeof ing === 'object' ? ing.preparation || null : null,
+        normalized_name: String(typeof ing === 'string' ? ing : ing.name || ing.ingredient_name).trim().toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' '),
+        preparation_note: typeof ing === 'object' ? ing.preparation || null : null,
+        sequence: typeof ing === 'object' ? ing.sequence || 0 : 0,
       }))
       await supabase.from('recipe_ingredients').insert(ingRows)
     }
