@@ -1,5 +1,7 @@
 import { GoogleGenAI } from '@google/genai'
 import { createAdminClient } from '@/lib/supabase/server'
+import { createHash } from 'node:crypto'
+import { isRecipeImage } from '@/lib/recipe-image-policy'
 
 const IMAGE_MODELS = ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview']
 
@@ -11,7 +13,7 @@ export async function generateAndStoreRecipeImage(recipeId: string, force = fals
     .eq('id', recipeId)
     .single()
   if (error || !recipe) throw new Error(error?.message || 'Recipe not found')
-  if (recipe.image_url && !force) return recipe.image_url
+  if (isRecipeImage(recipe.image_url) && !force) return recipe.image_url
   if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not configured')
 
   const ingredients = Array.isArray(recipe.ingredients)
@@ -30,7 +32,7 @@ export async function generateAndStoreRecipeImage(recipeId: string, force = fals
         config: { responseModalities: ['TEXT', 'IMAGE'] },
       })
       const parts = response.candidates?.[0]?.content?.parts || []
-      const imagePart = parts.find((part: any) => part.inlineData?.data)
+      const imagePart = parts.find((part: any) => part.inlineData?.data && /^image\/(png|jpeg|webp)$/.test(part.inlineData?.mimeType || ''))
       if (imagePart?.inlineData?.data) {
         bytes = Buffer.from(imagePart.inlineData.data, 'base64')
         mimeType = imagePart.inlineData.mimeType || mimeType
@@ -40,7 +42,7 @@ export async function generateAndStoreRecipeImage(recipeId: string, force = fals
       console.warn(`[Recipe image ${model}]`, modelError?.message || modelError)
     }
   }
-  if (!bytes) throw new Error('AI did not return an image')
+  if (!bytes?.length) throw new Error('AI did not return an image')
 
   const { data: buckets, error: bucketListError } = await supabase.storage.listBuckets()
   if (bucketListError) throw new Error(bucketListError.message)
@@ -53,7 +55,8 @@ export async function generateAndStoreRecipeImage(recipeId: string, force = fals
     if (bucketError && !bucketError.message.toLowerCase().includes('already exists')) throw new Error(bucketError.message)
   }
   const extension = mimeType.includes('jpeg') ? 'jpg' : mimeType.includes('webp') ? 'webp' : 'png'
-  const objectPath = `${recipeId.replace(/[^a-z0-9-_]/gi, '-')}.${extension}`
+  const digest = createHash('sha256').update(bytes).digest('hex').slice(0, 16)
+  const objectPath = `${recipeId.replace(/[^a-z0-9-_]/gi, '-')}-${digest}.${extension}`
   const { error: uploadError } = await supabase.storage.from('recipe-images').upload(objectPath, bytes, {
     contentType: mimeType,
     cacheControl: '31536000',
@@ -61,7 +64,8 @@ export async function generateAndStoreRecipeImage(recipeId: string, force = fals
   })
   if (uploadError) throw new Error(uploadError.message)
   const publicUrl = supabase.storage.from('recipe-images').getPublicUrl(objectPath).data.publicUrl
-  const { error: updateError } = await supabase.from('recipes').update({ image_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', recipeId)
+  const { data: saved, error: updateError } = await supabase.from('recipes').update({ image_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', recipeId).select('id').single()
   if (updateError) throw new Error(updateError.message)
+  if (!saved) throw new Error('Recipe image URL was not saved')
   return publicUrl
 }
