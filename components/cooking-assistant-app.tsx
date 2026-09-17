@@ -178,6 +178,8 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
   const [cameraError, setCameraError] = useState<string | null>(null)
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null)
   const cameraStreamRef = useRef<MediaStream | null>(null)
+  const inventoryLoadedRef = useRef(false)
+  const favoritesLoadedRef = useRef(false)
 
   // Favorites & Feedback State
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([])
@@ -226,7 +228,18 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
         console.warn('Recommendation fetch error:', err)
       }
     }
-    fetchRecommendations()
+    // Greeting and meal slot are calculated locally first. The personalized
+    // recommendation refresh can wait until the browser is idle.
+    const idleWindow = window as Window & typeof globalThis & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+    if (idleWindow.requestIdleCallback) {
+      const id = idleWindow.requestIdleCallback(fetchRecommendations, { timeout: 1500 })
+      return () => idleWindow.cancelIdleCallback?.(id)
+    }
+    const timer = window.setTimeout(fetchRecommendations, 500)
+    return () => window.clearTimeout(timer)
   }, [userId])
 
   // Keep the hero recommendation aligned to the user's current local time.
@@ -340,10 +353,20 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
 
   useEffect(() => {
     loadMealPlans()
-    loadInventory()
-    loadFavorites()
     loadProfile()
   }, [])
+
+  // Keep first paint light: tab-specific data is loaded only when it is used.
+  useEffect(() => {
+    if (activeTab === 'kitchen' && !inventoryLoadedRef.current) {
+      inventoryLoadedRef.current = true
+      loadInventory()
+    }
+    if (activeTab === 'favorites' && !favoritesLoadedRef.current) {
+      favoritesLoadedRef.current = true
+      loadFavorites()
+    }
+  }, [activeTab])
 
   const eligibleRecipes = useMemo(
     () => recipes.filter((recipe) =>
@@ -900,481 +923,7 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
             </section>
 
             <div className="mise-flavor-ticker" aria-label="Food inspiration">
-              <span>comfort bowls</span><b>✦</b><span>crispy bites</span><b>✦</b><span>desi classics</span><b>✦</b><span>weeknight wins</span><b>✦</b><span>made for you</span>
-            </div>
-
-            {/* Section 16: Four Core Daily Slot Cards */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#7841e7]">Today&apos;s edit</p><h2 className="text-2xl font-black tracking-tight text-[#191522]">Four moods. One hungry you.</h2></div>
-                <span className="rounded-full bg-[#191522] px-3 py-1.5 text-[10px] font-bold text-white">tap → cook</span>
-              </div>
-
-              <div className="mise-meal-grid">
-                {[
-                  {
-                    slot: 'BREAKFAST',
-                    icon: Sun,
-                    item: breakfastSlot,
-                    badgeColor: 'text-[#d97706] bg-[#fef3c7]',
-                  },
-                  {
-                    slot: 'LUNCH',
-                    icon: Utensils,
-                    item: lunchSlot,
-                    badgeColor: 'text-[#059669] bg-[#d1fae5]',
-                  },
-                  {
-                    slot: 'HIGH TEA',
-                    icon: Coffee,
-                    item: highTeaSlot,
-                    badgeColor: 'text-[#b45309] bg-[#fef3c7]',
-                  },
-                  {
-                    slot: 'DINNER',
-                    icon: Moon,
-                    item: dinnerSlot,
-                    badgeColor: 'text-[#4338ca] bg-[#e0e7ff]',
-                  },
-                ].map(({ slot, icon: SlotIcon, item, badgeColor }, index) => {
-                  if (!item) return null
-                  return (
-                    <div
-                      key={slot}
-                      className={`mise-meal-card mise-meal-card-${index + 1} group`}
-                    >
-                      <div>
-                        {/* Slot Header */}
-                        <div className="mise-meal-meta flex items-center justify-between">
-                          <span
-                            className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeColor}`}
-                          >
-                            <SlotIcon className="size-3" />
-                            {slot}
-                          </span>
-                          <span className="text-[11px] font-medium text-[#736e65]">
-                            {item.total_time || item.cook_time} min
-                          </span>
-                        </div>
-
-                        {/* Image Thumbnail */}
-                        {(
-                          <div className="mise-meal-photo">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <RecipeImage
-                              recipe={item}
-                              regenerate={!item.image_url || repeatedImageUrls.has(item.image_url)}
-                              className="size-full object-cover group-hover:scale-105 transition duration-300"
-                              loading="lazy"
-                            />
-                          </div>
-                        )}
-
-                        {/* Title */}
-                        <h3 className="mise-meal-title line-clamp-1">
-                          {item.name}
-                        </h3>
-                        <p className="mt-1 text-xs text-[#736e65] line-clamp-2">
-                          {item.description || 'Nutritious homestyle recipe with fresh ingredients.'}
-                        </p>
-                        <div className="mise-nutrition-row">
-                          <span className="mise-calorie-pill" title="Estimated per serving from recipe ingredients">🔥 ≈ {recipeNutrition(item).calories ? `${recipeNutrition(item).calories} kcal` : 'calculating'}</span>
-                          <span className="mise-score-pill" title="Estimated nutrition score">★ {recipeNutrition(item).score ? `${recipeNutrition(item).score}/10` : 'calculating'}</span>
-                        </div>
-                      </div>
-
-                      {/* Cook Button */}
-                      <div className="mt-4 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedRecipeForPlan(item)}
-                          className="flex-1 rounded-xl bg-[#223129] py-2 text-center text-xs font-bold text-white hover:bg-[#b25537] transition shadow-xs"
-                        >
-                          Cook this
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleStartCooking(item)}
-                          title="Start cooking immediately"
-                          className="flex size-8 items-center justify-center rounded-xl border border-[#ded9cf] text-[#b25537] hover:bg-[#faede6] transition"
-                        >
-                          <Flame className="size-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* ===================== TAB 2: 📅 PLAN ===================== */}
-        {activeTab === 'plan' && (
-          <div className="moaka-tab space-y-6">
-            {/* Header with Generate My Week */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-[#b25537]">Weekly Meal Calendar</p>
-                <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#223129]">
-                  Smart Meal Plans &amp; Prep
-                </h1>
-                <p className="mt-1 text-xs text-[#736e65]">
-                  Automated preparation timeline: the system tells you when to soak, chop, and start cooking.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleGenerateWeek}
-                disabled={isGeneratingWeek}
-                className="rounded-2xl bg-[#223129] px-5 py-3 text-xs font-bold text-white shadow-md hover:bg-[#15201a] transition flex items-center justify-center gap-2 shrink-0"
-              >
-                {isGeneratingWeek ? (
-                  <>
-                    <Sparkles className="size-4 animate-spin text-[#df9776]" />
-                    <span>Planning Your Week...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="size-4 text-[#df9776]" />
-                    <span>✨ Generate My Week</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {weekGeneratedNotice && (
-              <div className="rounded-2xl bg-[#eef6f0] border border-[#c4e2cd] p-4 text-[#245e38] flex items-center gap-2 text-xs font-semibold">
-                <CheckCircle2 className="size-4 text-[#2e7d32]" />
-                <span>Generated a balanced 7-day meal plan across Breakfast, Lunch, High Tea, and Dinner!</span>
-              </div>
-            )}
-
-            {weekGenerateError && (
-              <div role="alert" className="rounded-2xl border border-[#ffc8b2] bg-[#fff3ed] p-4 text-xs font-semibold text-[#a73508] flex items-center justify-between gap-3">
-                <span>{weekGenerateError}</span>
-                <button type="button" onClick={handleGenerateWeek} className="rounded-full bg-[#f4510b] px-3 py-1.5 font-bold text-white">Try again</button>
-              </div>
-            )}
-
-            <TomorrowPlanNightPrep
-              recipes={eligibleRecipes}
-              mealPlans={mealPlans}
-              inventory={inventory}
-              onRefreshPlans={loadMealPlans}
-              onAddInventoryItem={(name, qty, unit) => {
-                fetch('/api/kitchen/inventory', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ ingredient_name: name, quantity: qty, unit }),
-                }).then(() => loadInventory())
-              }}
-              onRemoveInventoryItem={handleDeleteInventory}
-              onStartCooking={(rec) => handleStartCooking(rec)}
-              onSelectRecipeForPlan={(rec) => setSelectedRecipeForPlan(rec)}
-              onSwapTomorrowMeal={async (slot, recipe, plannedDate, plannedTime) => {
-                const res = await fetch('/api/meal-plans', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    recipe_id: recipe.id,
-                    meal_type: slot,
-                    planned_date: plannedDate,
-                    planned_time: plannedTime,
-                  }),
-                })
-                if (!res.ok) throw new Error('Could not save the meal change.')
-                await loadMealPlans()
-              }}
-            />
-
-            {/* List of Scheduled Meals & Preparation Tasks */}
-            {mealPlans.length === 0 ? (
-              <div className="rounded-3xl border border-[#ded9cf] bg-white p-10 text-center space-y-3">
-                <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#faede6] text-[#b25537]">
-                  <CalendarDays className="size-7" />
-                </div>
-                <h3 className="font-serif text-lg font-bold text-[#223129]">No Meals Planned Yet</h3>
-                <p className="text-xs text-[#736e65] max-w-sm mx-auto">
-                  Click &ldquo;Generate My Week&rdquo; to let your AI assistant map out all your meals, or click [ Cook ] on any dish from Home.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleGenerateWeek}
-                  className="rounded-xl bg-[#b25537] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#934329] transition"
-                >
-                  Generate 7-Day Plan
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {mealPlans.map((plan) => {
-                  const rec = plan.recipes || recipes.find((r) => r.id === plan.recipe_id)
-                  const recName = rec?.name || rec?.title || 'Planned Dish'
-                  return (
-                    <div
-                      key={plan.id}
-                      className="rounded-2xl border border-[#ded9cf] bg-white p-5 shadow-xs space-y-4"
-                    >
-                      {/* Plan Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#f0ece3] pb-3">
-                        <div className="flex items-center gap-3">
-                          <span className="rounded-full bg-[#faede6] px-2.5 py-1 text-[11px] font-bold uppercase text-[#b25537]">
-                            {plan.meal_type}
-                          </span>
-                          <div>
-                            <h3 className="font-serif text-base font-bold text-[#223129]">{recName}</h3>
-                            <p className="text-xs text-[#736e65]">
-                              📅 {plan.planned_date} at ⏱ {plan.planned_time} • {plan.servings} servings
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              plan.status === 'completed'
-                                ? 'bg-[#eef6f0] text-[#245e38]'
-                                : plan.status === 'cooking'
-                                ? 'bg-[#faede6] text-[#b25537] animate-pulse'
-                                : 'bg-[#f0ece3] text-[#736e65]'
-                            }`}
-                          >
-                            {plan.status}
-                          </span>
-                          {rec && (
-                            <button
-                              type="button"
-                              onClick={() => handleStartCooking(rec, plan.id)}
-                              className="rounded-xl bg-[#b25537] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#934329] transition flex items-center gap-1 shadow-xs"
-                            >
-                              <Flame className="size-3.5" />
-                              <span>Start Cooking</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Automated Preparation Tasks (Section 20 & 21) */}
-                      {plan.tasks && plan.tasks.length > 0 && (
-                        <div className="rounded-xl bg-[#faf8f4] border border-[#f0ece3] p-3.5 space-y-2">
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-[#736e65] flex items-center gap-1.5">
-                            <span>🔔</span> Actionable Preparation Tasks
-                          </p>
-
-                          <div className="space-y-1.5">
-                            {plan.tasks.map((task) => {
-                              const isDone = task.status === 'completed'
-                              return (
-                                <div
-                                  key={task.id}
-                                  className="flex items-center justify-between gap-3 p-2 rounded-lg bg-white border border-[#ded9cf]/60"
-                                >
-                                  <div className="flex items-center gap-2.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleToggleTask(task.id, task.status)}
-                                      className={`flex size-5 items-center justify-center rounded-md border transition ${
-                                        isDone
-                                          ? 'border-[#2e7d32] bg-[#2e7d32] text-white'
-                                          : 'border-[#ded9cf] hover:border-[#b25537]'
-                                      }`}
-                                    >
-                                      {isDone && <Check className="size-3.5" />}
-                                    </button>
-                                    <div>
-                                      <span
-                                        className={`text-xs font-semibold ${
-                                          isDone ? 'line-through text-[#8d887d]' : 'text-[#223129]'
-                                        }`}
-                                      >
-                                        {task.task_name}
-                                      </span>
-                                      <span className="text-[11px] text-[#736e65] block">
-                                        {task.description}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-mono text-[#8d887d]">
-                                      {task.scheduled_at
-                                        ? new Date(task.scheduled_at).toLocaleTimeString([], {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                          })
-                                        : 'Prep'}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleToggleTask(task.id, task.status)}
-                                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition ${
-                                        isDone
-                                          ? 'bg-[#eef6f0] text-[#245e38]'
-                                          : 'bg-[#b25537] text-white hover:bg-[#934329]'
-                                      }`}
-                                    >
-                                      {isDone ? 'Done ✓' : '[ Done ]'}
-                                    </button>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ===================== TAB 3: 🛒 KITCHEN ===================== */}
-        {activeTab === 'kitchen' && (
-          <div className="moaka-tab space-y-6">
-            {/* Header & What Can I Cook trigger */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-[#b25537]">Pantry &amp; Fridge Inventory</p>
-                <h1 className="mt-1 font-serif text-2xl sm:text-3xl font-bold tracking-tight text-[#223129]">
-                  Kitchen Inventory
-                </h1>
-                <p className="mt-1 text-xs text-[#736e65]">
-                  Track what you have at home. The AI recommends dishes using your available ingredients.
-                </p>
-              </div>
-
-              {/* Specification 37: "✨ What Can I Cook?" */}
-              <button
-                type="button"
-                onClick={() => handleWhatCanICook()}
-                disabled={loadingWhatCanICook}
-                className="rounded-2xl bg-[#b25537] px-5 py-3 text-xs font-bold text-white shadow-md hover:bg-[#934329] transition flex items-center justify-center gap-2 shrink-0"
-              >
-                {loadingWhatCanICook ? (
-                  <>
-                    <Sparkles className="size-4 animate-spin text-white" />
-                    <span>Analyzing Pantry...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="size-4 text-white" />
-                    <span>✨ What Can I Cook?</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Camera and multi-photo pantry scan */}
-            <section className="mise-kitchen-scan overflow-hidden rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-6 shadow-xs">
-              <div className="mise-scan-layout">
-                <div className="mise-scan-photo">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/premium-pantry.jpg" alt="A well-stocked refrigerator and pantry ready to scan" />
-                  <span>AI pantry vision</span>
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col justify-center">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-11 items-center justify-center rounded-2xl bg-[#7841e7] text-white shadow-md">
-                    <ScanLine className="size-5" />
-                  </span>
-                  <div>
-                    <h2 className="text-base font-extrabold text-[#223129]">Scan your kitchen</h2>
-                    <p className="text-xs text-[#736e65]">Snap shelves or upload up to 8 photos.</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={openKitchenCamera} className="rounded-xl border border-[#ded9cf] bg-white px-3.5 py-2 text-xs font-bold text-[#223129] hover:border-[#f4510b] hover:text-[#f4510b]">
-                    <span className="flex items-center gap-1.5"><Camera className="size-4" /> Take photo</span>
-                  </button>
-                  <label className="cursor-pointer rounded-xl border border-[#ded9cf] bg-white px-3.5 py-2 text-xs font-bold text-[#223129] hover:border-[#7841e7] hover:text-[#7841e7]">
-                    <span className="flex items-center gap-1.5"><Images className="size-4" /> Add photos</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="sr-only"
-                      onChange={(event) => {
-                        handleKitchenPhotos(event.target.files)
-                        event.currentTarget.value = ''
-                      }}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {cameraError && <p role="alert" className="mt-3 rounded-xl bg-[#fff1eb] p-3 text-xs font-semibold text-[#a73508]">{cameraError}</p>}
-
-              {cameraOpen && (
-                <div className="mt-4 overflow-hidden rounded-2xl bg-black p-2 shadow-xl">
-                  <div className="relative aspect-video overflow-hidden rounded-xl bg-[#151515]">
-                    <video ref={cameraVideoRef} autoPlay playsInline muted className="size-full object-cover" aria-label="Live kitchen camera" />
-                    <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur">LIVE CAMERA</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-3 py-3">
-                    <button type="button" onClick={stopKitchenCamera} className="rounded-full bg-white/15 px-4 py-2 text-xs font-bold text-white">Close</button>
-                    <button type="button" onClick={captureKitchenPhoto} disabled={kitchenPhotos.length >= 8} className="flex size-14 items-center justify-center rounded-full border-4 border-white bg-[#f4510b] text-white shadow-lg disabled:opacity-40" aria-label="Capture kitchen photo">
-                      <Camera className="size-6" />
-                    </button>
-                    <span className="min-w-[64px] text-xs font-bold text-white/75">{kitchenPhotos.length}/8</span>
-                  </div>
-                </div>
-              )}
-
-              {kitchenPhotos.length > 0 && (
-                <div className="mt-4">
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-8">
-                    {kitchenPhotos.map((photo, index) => (
-                      <div key={`${photo.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl bg-[#eee8f8]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photo.data} alt={`Kitchen photo ${index + 1}`} className="size-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => setKitchenPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                          className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/65 text-white"
-                          aria-label={`Remove kitchen photo ${index + 1}`}
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleScanKitchen}
-                    disabled={scanningKitchen}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7841e7] px-4 py-3 text-xs font-extrabold text-white shadow-md hover:bg-[#6330cc] disabled:opacity-60"
-                  >
-                    {scanningKitchen ? <LoaderCircle className="size-4 animate-spin" /> : <ScanLine className="size-4" />}
-                    {scanningKitchen ? 'Identifying items…' : `Scan ${kitchenPhotos.length} photo${kitchenPhotos.length > 1 ? 's' : ''}`}
-                  </button>
-                </div>
-              )}
-
-              {kitchenScanStatus && (
-                <p className="mt-3 text-xs font-bold text-[#6330cc]" role="status">{kitchenScanStatus}</p>
-              )}
-
-              {detectedKitchenItems.length > 0 && (
-                <div className="mt-4 rounded-2xl border border-[#ffd4c2] bg-[#fff9f6] p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div><p className="text-xs font-extrabold text-[#29262e]">Confirm detected items</p><p className="text-[10px] text-[#736e65]">Tap an item to include or remove it.</p></div>
-                    <span className="rounded-full bg-[#f4510b] px-2 py-1 text-[10px] font-bold text-white">{detectedKitchenItems.filter((item) => item.selected).length} selected</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {detectedKitchenItems.map((item, index) => (
-                      <button type="button" key={`${item.name}-${index}`} onClick={() => setDetectedKitchenItems((current) => current.map((entry, itemIndex) => itemIndex === index ? { ...entry, selected: !entry.selected } : entry))} className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${item.selected ? 'border-[#f4510b] bg-[#f4510b] text-white' : 'border-[#ded9cf] bg-white text-[#736e65]'}`}>
-                        {item.selected ? '✓ ' : '+ '}{item.name} · {Math.round((item.confidence || .7) * 100)}%
-                      </button>
-                    ))}
-                  </div>
-                  <button type="button" onClick={handleConfirmDetectedItems} disabled={scanningKitchen || !detectedKitchenItems.some((item) => item.selected)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#f4510b] px-4 py-3 text-xs font-extrabold text-white shadow-md disabled:opacity-50">
+              <span>comfort bowls</span><b>✦</b><span>crispy bites</span><b>✦</b><span>desi classics</span>…6765 tokens truncated…firmDetectedItems} disabled={scanningKitchen || !detectedKitchenItems.some((item) => item.selected)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#f4510b] px-4 py-3 text-xs font-extrabold text-white shadow-md disabled:opacity-50">
                     {scanningKitchen ? <LoaderCircle className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
                     Confirm &amp; find recipes
                   </button>

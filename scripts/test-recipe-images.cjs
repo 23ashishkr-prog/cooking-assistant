@@ -18,6 +18,15 @@ function load(file, overrides = {}, env = {}) {
   return exports
 }
 const policy = load('lib/recipe-image-policy.ts')
+test('recipe images have responsive optimized sources and lazy loading',()=>{
+  const React=require('react');const {renderToStaticMarkup}=require('react-dom/server')
+  const {RecipeImage}=load('components/recipe-image.tsx')
+  const html=renderToStaticMarkup(React.createElement(RecipeImage,{recipe:{id:'a',name:'Appam',image_url:'/appam.webp'}}))
+  assert.match(html,/srcSet=/)
+  assert.match(html,/_next\/image/)
+  assert.match(html,/loading="lazy"/)
+  assert.match(html,/sizes="/)
+})
 for (const username of ['Hrishikesh', 'hrishikesh@moaka.com']) {
   test(`login resolves ${username} to actual Auth email`, async () => {
     let received
@@ -94,7 +103,15 @@ test('card renders stored image and never makes generation requests',()=>{
   const html=renderToStaticMarkup(React.createElement(RecipeImage,{recipe:{id:'a',name:'Appam',image_url:'https://example.com/appam.png'}}))
   assert.match(html,/src="https:\/\/example.com\/appam.png"/)
   const missing=renderToStaticMarkup(React.createElement(RecipeImage,{recipe:{id:'a',name:'Appam',image_url:'/recipe-fallback-indian.webp'}}))
-  assert.doesNotMatch(missing,/Preparing|Retry|<img/)
+  assert.doesNotMatch(missing,/Preparing|Retry/)
+  assert.match(missing,/_next\/image/)
+  assert.match(missing,/gen-z-food-hero/)
+})
+test('known missing recipes render their own local image immediately',()=>{
+  const React=require('react');const {renderToStaticMarkup}=require('react-dom/server')
+  const {RecipeImage}=load('components/recipe-image.tsx')
+  const html=renderToStaticMarkup(React.createElement(RecipeImage,{recipe:{id:'india-state-arunachal-pradesh',name:'Arunachal Pradesh Zan',cuisine:'Indian',image_url:'/recipe-fallback-indian.webp'},regenerate:true}))
+  assert.match(html,/recipe-arunachal-zan/)
 })
 test('GET with missing photo does not trigger AI generation',async()=>{
   const query={select(){return this},eq(){return this},async single(){return {data:{image_url:'/recipe-fallback-indian.webp'}}}}
