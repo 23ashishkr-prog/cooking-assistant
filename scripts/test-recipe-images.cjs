@@ -18,6 +18,28 @@ function load(file, overrides = {}, env = {}) {
   return exports
 }
 const policy = load('lib/recipe-image-policy.ts')
+for (const username of ['Hrishikesh', 'hrishikesh@moaka.com']) {
+  test(`login resolves ${username} to actual Auth email`, async () => {
+    let received
+    const query={select(){return this},eq(){return this},async maybeSingle(){return {data:{email:'hrishikesh@moaka.com'}}}}
+    const route=load('app/api/auth/login/route.ts', {'@/lib/supabase/server':{
+      createAdminClient:()=>({from:()=>query}),
+      createClient:async()=>({auth:{signInWithPassword:async value=>{received=value;return {error:null}}}}),
+    }},{SUPABASE_SERVICE_ROLE_KEY:'test-only'})
+    const {NextRequest}=require('next/server')
+    const response=await route.POST(new NextRequest('http://localhost/api/auth/login',{method:'POST',body:JSON.stringify({username,password:'test-password'})}))
+    assert.equal(response.status,200)
+    assert.equal(received.email,'hrishikesh@moaka.com')
+  })
+}
+test('login rejects incorrect passwords', async()=>{
+  const route=load('app/api/auth/login/route.ts',{'@/lib/supabase/server':{
+    createClient:async()=>({auth:{signInWithPassword:async()=>({error:{message:'Invalid credentials'}})}}),
+  }})
+  const {NextRequest}=require('next/server')
+  const response=await route.POST(new NextRequest('http://localhost/api/auth/login',{method:'POST',body:JSON.stringify({username:'person@example.com',password:'wrong'})}))
+  assert.equal(response.status,401)
+})
 test('repair includes every generic fallback and duplicate, skips unique images', () => {
   const rows = [{id:'a',image_url:'/recipe-fallback-indian.webp'}, {id:'b',image_url:null},
     {id:'c',image_url:'https://example.com/shared.jpg'}, {id:'d',image_url:'https://example.com/shared.jpg'},

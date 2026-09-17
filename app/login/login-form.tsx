@@ -3,11 +3,10 @@
 import { useRouter } from 'next/navigation'
 import { FormEvent, useState } from 'react'
 import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 
 export function LoginForm() {
   const router = useRouter()
-  const [username, setUsername] = useState('ashish')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -18,24 +17,12 @@ export function LoginForm() {
     setLoading(true)
     setError('')
     try {
-      const supabase = createClient()
-      const normalizedUsername = username.trim().toLowerCase()
-      const email = `${normalizedUsername}@moaka.app`
-      let { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
-
-      // Bootstrap is only a recovery path for a first deployment. Normal logins
-      // now use one direct Auth request instead of listing every project user.
-      if (loginError && normalizedUsername === 'ashish') {
-        const setup = await fetch('/api/auth/bootstrap', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        })
-        const setupData = await setup.json()
-        if (!setup.ok) throw new Error(setupData.error || 'Login setup failed')
-        ;({ error: loginError } = await supabase.auth.signInWithPassword({ email: setupData.email, password }))
-      }
-
-      if (loginError) throw loginError
+      const response = await fetch('/api/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Unable to sign in')
       // Supabase has already written the session cookie. A client transition
       // avoids throwing away the loaded application shell with a full reload.
       router.replace('/')
@@ -66,7 +53,7 @@ export function LoginForm() {
         <p className="mt-12 text-xs font-black uppercase tracking-[.3em] text-[#ff7440]">Welcome back</p>
         <h1 className="mt-3 font-serif text-5xl font-black leading-none">Good food starts here.</h1>
         <p className="mt-4 text-sm text-white/60">Sign in to load your personal meal plan, kitchen and recommendations.</p>
-        <label className="mt-9 block text-xs font-bold text-white/70">Username</label>
+        <label className="mt-9 block text-xs font-bold text-white/70">Username or email</label>
         <div className="mt-2 flex items-center rounded-2xl border border-white/15 bg-white/7 px-4 focus-within:border-[#ff7440]"><UserRound className="size-4 text-[#ff7440]"/><input value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username" required className="w-full bg-transparent px-3 py-4 text-sm text-white outline-none placeholder:text-white/35" placeholder="Your username"/></div>
         <label className="mt-5 block text-xs font-bold text-white/70">Password</label>
         <div className="mt-2 flex items-center rounded-2xl border border-white/15 bg-white/7 px-4 focus-within:border-[#ff7440]"><LockKeyhole className="size-4 text-[#ff7440]"/><input value={password} onChange={e=>setPassword(e.target.value)} type={showPassword?'text':'password'} autoComplete="current-password" required className="w-full bg-transparent px-3 py-4 text-sm text-white outline-none placeholder:text-white/35" placeholder="Enter password"/><button type="button" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff className="size-4"/>:<Eye className="size-4"/>}</button></div>
