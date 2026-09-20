@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { deriveRecipePrepTasks } from '@/lib/recipe-preparation'
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,7 +13,11 @@ export async function GET(req: NextRequest) {
       .from('meal_plans')
       .select(`
         id, user_id, recipe_id, meal_type, planned_date, planned_time, servings, status, created_at,
-        recipes (id, name, title, description, image_url, prep_time_minutes, cook_time_minutes, difficulty, meal_type)
+        recipes (
+          id, name, title, description, image_url, meal_type, category, cuisine, diet_type,
+          prep_time_minutes, cook_time_minutes, total_time_minutes, difficulty,
+          calories, nutrition_score, ingredients
+        )
       `)
       .eq('user_id', userId)
       .order('planned_date', { ascending: true })
@@ -42,10 +47,19 @@ export async function GET(req: NextRequest) {
     }
 
     // Combine plans with their calculated tasks
-    const plansWithTasks = (plans || []).map(p => ({
-      ...p,
-      tasks: prepTasks.filter(t => t.meal_plan_id === p.id),
-    }))
+    const plansWithTasks = (plans || []).map(p => {
+      const joinedRecipe = Array.isArray(p.recipes) ? p.recipes[0] : p.recipes
+      return {
+        ...p,
+        recipes: joinedRecipe ? {
+          ...joinedRecipe,
+          prep_time: joinedRecipe.prep_time_minutes || 15,
+          cook_time: joinedRecipe.cook_time_minutes || 25,
+          total_time: joinedRecipe.total_time_minutes || (joinedRecipe.prep_time_minutes || 15) + (joinedRecipe.cook_time_minutes || 25),
+        } : null,
+        tasks: prepTasks.filter(t => t.meal_plan_id === p.id),
+      }
+    })
 
     return NextResponse.json({ plans: plansWithTasks })
   } catch (error: any) {
@@ -73,7 +87,7 @@ export async function POST(req: NextRequest) {
     // 1. Fetch recipe details & prep tasks
     const { data: recipe, error: recError } = await supabase
       .from('recipes')
-      .select('id, name, title, prep_time_minutes, cook_time_minutes, total_time_minutes')
+      .select('id, name, title, prep_time_minutes, cook_time_minutes, total_time_minutes, ingredients')
       .eq('id', recipe_id)
       .single()
 
@@ -85,10 +99,10 @@ export async function POST(req: NextRequest) {
     const cookMinutes = recipe.cook_time_minutes || 25
     const prepMinutes = recipe.prep_time_minutes || 15
 
-    // 2. Insert into meal_plans
+    // 2. Create or replace this user's meal slot. A slot is intentionally unique.
     const { data: newPlan, error: planError } = await supabase
       .from('meal_plans')
-      .insert({
+      .upsert({
         user_id,
         recipe_id,
         meal_type,
@@ -96,7 +110,7 @@ export async function POST(req: NextRequest) {
         planned_time,
         servings,
         status: 'planned',
-      })
+      }, { onConflict: 'user_id,planned_date,meal_type' })
       .select()
       .single()
 
@@ -104,6 +118,12 @@ export async function POST(req: NextRequest) {
       console.error('[Create Plan Error]:', planError)
       return NextResponse.json({ error: planError?.message || 'Failed to create plan' }, { status: 500 })
     }
+
+    // Rebuilding a replaced slot must not leave stale or duplicate prep records.
+    await Promise.all([
+      supabase.from('user_preparation_tasks').delete().eq('meal_plan_id', newPlan.id),
+      supabase.from('notifications').delete().eq('meal_plan_id', newPlan.id),
+    ])
 
     // 3. Automatic Preparation Calculation
     // Parse planned_date and planned_time to calculate exact scheduled_at timestamps
@@ -153,24 +173,26 @@ export async function POST(req: NextRequest) {
         })
       }
     } else {
-      // Default prep task
-      const taskScheduleTime = new Date(startCookingTime.getTime() - prepMinutes * 60 * 1000)
-      prepTasksToInsert.push({
-        user_id,
-        meal_plan_id: newPlan.id,
-        task_name: 'Mise en place',
-        description: `Chop vegetables and gather ingredients for ${recipeName}`,
-        scheduled_at: taskScheduleTime.toISOString(),
-        status: 'pending',
-      })
-      notificationsToInsert.push({
-        user_id,
-        meal_plan_id: newPlan.id,
-        title: `🔔 ${meal_type.toUpperCase()} PREPARATION`,
-        message: `Mise en place: Gather ingredients for ${recipeName}`,
-        notification_type: 'preparation',
-        scheduled_at: taskScheduleTime.toISOString(),
-        status: 'unread',
+      const derivedTasks = deriveRecipePrepTasks(recipe)
+      derivedTasks.forEach((task, index) => {
+        const taskScheduleTime = new Date(startCookingTime.getTime() - (prepMinutes + index * 10) * 60 * 1000)
+        prepTasksToInsert.push({
+          user_id,
+          meal_plan_id: newPlan.id,
+          task_name: task.task_name,
+          description: task.description,
+          scheduled_at: taskScheduleTime.toISOString(),
+          status: 'pending',
+        })
+        notificationsToInsert.push({
+          user_id,
+          meal_plan_id: newPlan.id,
+          title: `🔔 ${meal_type.toUpperCase()} PREPARATION`,
+          message: `${task.task_name}: ${task.description}`,
+          notification_type: 'preparation',
+          scheduled_at: taskScheduleTime.toISOString(),
+          status: 'unread',
+        })
       })
     }
 

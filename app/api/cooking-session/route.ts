@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
       .eq('recipe_id', recipe_id)
       .eq('status', 'active')
       .order('started_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
 
     if (existing) {

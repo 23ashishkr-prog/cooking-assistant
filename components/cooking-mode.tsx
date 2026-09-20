@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
-  Bot,
   Check,
   CheckCircle2,
   Clock,
@@ -22,6 +21,10 @@ import {
 } from 'lucide-react'
 
 export type CookingStep = {
+  ingredientIds?: string[]
+  techniqueIds?: string[]
+  dependsOn?: string[]
+  parallelWith?: string[]
   id?: string
   step_number: number
   title: string
@@ -117,6 +120,25 @@ export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: Cookin
   const [isVoiceActive, setIsVoiceActive] = useState(false)
   const [voiceTranscript, setVoiceTranscript] = useState('')
   const speechRecognitionRef = useRef<any>(null)
+  const swipeStartX = useRef<number | null>(null)
+  const ingredientName = (item: any) => String(item?.name || item?.ingredient_name || item || '').trim()
+  const ingredientEmoji = (name: string) => {
+    const value = name.toLowerCase()
+    if (value.includes('tomato')) return '🍅'
+    if (value.includes('potato')) return '🥔'
+    if (value.includes('onion')) return '🧅'
+    if (value.includes('garlic')) return '🧄'
+    if (value.includes('chilli') || value.includes('pepper')) return '🌶️'
+    if (value.includes('rice')) return '🍚'
+    if (value.includes('paneer') || value.includes('cheese')) return '🧀'
+    if (value.includes('egg')) return '🥚'
+    if (value.includes('milk') || value.includes('cream')) return '🥛'
+    if (value.includes('lemon') || value.includes('lime')) return '🍋'
+    if (value.includes('carrot')) return '🥕'
+    if (value.includes('leaf') || value.includes('spinach') || value.includes('coriander')) return '🌿'
+    return '🥣'
+  }
+  const visibleIngredients = (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).slice(0, 10)
 
   // Completion / Feedback state
   const [isCompleted, setIsCompleted] = useState(false)
@@ -533,8 +555,14 @@ export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: Cookin
       )}
 
       {/* 3. Main Stage: Focused Current Step Card */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 max-w-xl mx-auto w-full flex flex-col justify-between">
-        <div className="space-y-4">
+      <main className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,#fff4ed_0,#fdfcf9_44%)] px-4 py-5 sm:py-7 max-w-4xl mx-auto w-full flex flex-col justify-between gap-5">
+        <div className="space-y-4" onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null }} onTouchEnd={(event) => {
+          if (swipeStartX.current === null) return
+          const distance = event.changedTouches[0].clientX - swipeStartX.current
+          if (distance < -55 && currentStepIndex < totalSteps - 1) handleStepDone()
+          if (distance > 55 && currentStepIndex > 0) setCurrentStepIndex(index => index - 1)
+          swipeStartX.current = null
+        }}>
           {/* Step Number & Visual Status */}
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#faede6] text-[#b25537] text-xs font-bold uppercase tracking-wider">
@@ -549,10 +577,14 @@ export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: Cookin
             )}
           </div>
 
-          {/* Large Step Title */}
-          <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#223129] leading-tight">
-            {currentStep.title}
-          </h2>
+          <section className="group relative h-52 overflow-hidden rounded-[2rem] bg-[#21151e] shadow-[0_18px_50px_rgba(71,35,25,.2)] sm:h-72">
+            <img src={recipe.image_url || '/moaka-login-3d.png'} alt={recipeName} className="size-full object-cover opacity-80 transition duration-500 group-hover:scale-105" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
+              <p className="text-[10px] font-black uppercase tracking-[.25em] text-[#ff8a57]">Swipe for the next step →</p>
+              <h2 className="mt-2 max-w-2xl font-serif text-2xl font-black leading-tight sm:text-4xl">{currentStep.title}</h2>
+            </div>
+          </section>
 
           {/* Core Instruction */}
           <p className="text-base sm:text-lg text-[#3b3730] leading-relaxed font-sans bg-white border border-[#e8e4db] rounded-2xl p-5 shadow-sm">
@@ -579,6 +611,13 @@ export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: Cookin
               <span className="font-medium leading-relaxed">{currentStep.tip}</span>
             </div>
           )}
+
+          {visibleIngredients.length > 0 && <section className="relative -mt-8 rounded-[2rem] border border-[#eadfd4] bg-white p-4 shadow-[0_-10px_35px_rgba(47,31,24,.12)] sm:p-5">
+            <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#ddd5cd]"/><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.22em] text-[#f4510b]">Fridge</p><h3 className="mt-1 text-sm font-black text-[#251f27]">Ready for this step</h3></div><span className="rounded-full bg-[#eef6f0] px-2.5 py-1 text-[10px] font-bold text-[#287044]">✓ {visibleIngredients.length} items</span></div>
+            <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+              {visibleIngredients.map((item, index) => { const name = ingredientName(item); return <div key={`${name}-${index}`} className="min-w-20 text-center"><div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#fff8f1] to-[#f3e8dc] text-3xl shadow-inner ring-1 ring-[#eadfd4]">{ingredientEmoji(name)}</div><p className="mt-2 line-clamp-2 text-[10px] font-bold leading-tight text-[#514a50]">{name}</p></div> })}
+            </div>
+          </section>}
 
           {/* Step Countdown Timer Block */}
           <div className="rounded-2xl border border-[#ded9cf] bg-white p-4 shadow-sm flex items-center justify-between">
@@ -655,8 +694,10 @@ export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: Cookin
             onClick={() => setIsAiOpen(true)}
             className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#ded9cf] bg-white py-2.5 text-xs font-semibold text-[#b25537] hover:bg-[#fbf7f4] transition shadow-xs"
           >
-            <Bot className="size-4 text-[#b25537]" />
-            <span>🤖 Ask AI (&ldquo;My gravy is too thick&rdquo; / &ldquo;Substitute paneer&rdquo;)</span>
+            <span className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-black shadow-[0_0_20px_rgba(41,220,176,.24)]">
+              <img src="/moaka-ai-orb.gif" alt="" aria-hidden="true" className="size-full object-cover" />
+            </span>
+            <span>Ask Moaka AI</span>
           </button>
 
           {/* Giant DONE button */}
@@ -704,8 +745,8 @@ export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: Cookin
           <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 shadow-2xl border border-[#ded9cf] space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#f0ece3] pb-3">
               <div className="flex items-center gap-2">
-                <span className="flex size-8 items-center justify-center rounded-xl bg-[#faede6] text-[#b25537]">
-                  <Bot className="size-4" />
+                <span className="flex size-10 items-center justify-center overflow-hidden rounded-xl bg-black">
+                  <img src="/moaka-ai-orb.gif" alt="" aria-hidden="true" className="size-full object-cover" />
                 </span>
                 <div>
                   <h3 className="text-sm font-bold text-[#223129]">Chef AI Assistant</h3>
