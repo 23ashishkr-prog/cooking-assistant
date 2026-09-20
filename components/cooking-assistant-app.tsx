@@ -38,6 +38,9 @@ import {
 import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
+import { MoakaStudio } from './moaka-studio'
+import { RecipeLibrary } from './recipe-library'
+import { CookingMode as LibraryCookingMode } from './library-cooking-mode'
 import { CommunityFeed } from './community-feed'
 import { RecipeImage } from './recipe-image'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
@@ -64,6 +67,7 @@ export type RecipeItem = {
   ingredients?: any[] | null
   instructions?: any[] | null
   preparationTasks?: any[]
+  localOnly?: boolean
   stepsList?: CookingStep[]
 }
 
@@ -100,7 +104,7 @@ export type MealPlanItem = {
   }[]
 }
 
-export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'favorites' | 'profile' | 'community'
+export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'favorites' | 'profile' | 'community' | 'studio' | 'library'
 
 const QUICK_SEARCHES = [
   'Authentic Tonkotsu Ramen',
@@ -111,6 +115,7 @@ const QUICK_SEARCHES = [
 ]
 
 export function CookingAssistantApp({ initialRecipes = [], userId = 'default_user', initialUserName = 'Ashish' }: { initialRecipes: any[]; userId?: string; initialUserName?: string }) {
+  const [libraryCookingRecipe, setLibraryCookingRecipe] = useState<RecipeItem | null>(null)
   // Navigation
   const [activeTab, setActiveTab] = useState<ActiveTab>('home')
 
@@ -835,7 +840,8 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button type="button" onClick={() => setActiveTab(activeTab === 'studio' ? 'home' : 'studio')} className="rounded-xl bg-[#f4510b] px-3 py-1.5 text-xs font-bold text-white">{activeTab === 'studio' ? 'Home' : 'MOAKA Studio'}</button>
             <button
               type="button"
               onClick={() => setActiveTab('community')}
@@ -850,6 +856,9 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
 
       {/* Main Content by Active Tab */}
       <main className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
+        {activeTab === 'studio' && <div className="moaka-tab space-y-4"><button type="button" className="rounded-full border border-[#ded9cf] bg-white px-4 py-2 text-xs font-bold" onClick={() => setActiveTab('library')}>Explore Recipe Library →</button><MoakaStudio userId={userId} /></div>}
+        {activeTab === 'library' && <div className="moaka-tab space-y-4"><button type="button" className="rounded-full bg-[#f4510b] px-4 py-2 text-xs font-bold text-white" onClick={() => setActiveTab('studio')}>← MOAKA Studio</button><RecipeLibrary onCook={setLibraryCookingRecipe} /></div>}
+        {libraryCookingRecipe && <LibraryCookingMode recipe={libraryCookingRecipe} onClose={() => setLibraryCookingRecipe(null)} onCompleted={() => setLibraryCookingRecipe(null)} />}
         {activeTab === 'community' && (
           <CommunityFeed
             userId={userId}
