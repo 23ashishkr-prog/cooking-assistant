@@ -34,6 +34,7 @@ import {
 import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
+import { MoakaPlacementPanel } from './moaka-placement-panel'
 import { withDefaultRecipes } from '@/lib/default-recipes'
 
 export type RecipeItem = {
@@ -84,7 +85,7 @@ export type MealPlanItem = {
   }[]
 }
 
-export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'favorites' | 'profile'
+export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'placement' | 'favorites' | 'profile'
 
 const QUICK_SEARCHES = [
   'Authentic Tonkotsu Ramen',
@@ -1124,7 +1125,10 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
           </div>
         )}
 
-        {/* ===================== TAB 4: ❤️ FAVORITES ===================== */}
+        {/* ===================== TAB 4: MOAKA MEAL PLACEMENT ===================== */}
+        {activeTab === 'placement' && <MoakaPlacementPanel recipes={recipes} />}
+
+        {/* ===================== TAB 5: ❤️ FAVORITES ===================== */}
         {activeTab === 'favorites' && (
           <div className="space-y-6">
             <div className="rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs">
@@ -1433,6 +1437,7 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
             { id: 'home', label: 'Home', icon: Sun },
             { id: 'plan', label: 'Plan', icon: Calendar },
             { id: 'kitchen', label: 'Kitchen', icon: ShoppingBag },
+            { id: 'placement', label: 'Place', icon: Layers },
             { id: 'favorites', label: 'Favorites', icon: Heart },
             { id: 'profile', label: 'Profile', icon: User },
           ].map(({ id, label, icon: TabIcon }) => {
