@@ -858,6 +858,7 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
       {/* Main Content by Active Tab */}
       <main className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
         {activeTab === 'studio' && <div className="moaka-tab space-y-4"><button type="button" className="rounded-full border border-[#ded9cf] bg-white px-4 py-2 text-xs font-bold" onClick={() => setActiveTab('library')}>Explore Recipe Library →</button><MoakaStudio userId={userId} /></div>}
+        {activeTab === 'placement' && <div className="moaka-tab"><MoakaPlacementPanel recipes={recipes} /></div>}
         {activeTab === 'library' && <div className="moaka-tab space-y-4"><button type="button" className="rounded-full bg-[#f4510b] px-4 py-2 text-xs font-bold text-white" onClick={() => setActiveTab('studio')}>← MOAKA Studio</button><RecipeLibrary onCook={setLibraryCookingRecipe} /></div>}
         {libraryCookingRecipe && <LibraryCookingMode recipe={libraryCookingRecipe} onClose={() => setLibraryCookingRecipe(null)} onCompleted={() => setLibraryCookingRecipe(null)} />}
         {activeTab === 'community' && (
@@ -1946,6 +1947,7 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
             { id: 'plan', label: 'Plan', icon: Calendar },
             { id: 'kitchen', label: 'Kitchen', icon: ShoppingBag },
             { id: 'favorites', label: 'Favorites', icon: Heart },
+            { id: 'placement', label: 'Place', icon: Layers },
             { id: 'profile', label: 'Profile', icon: User },
           ].map(({ id, label, icon: TabIcon }) => {
             const isActive = activeTab === id
