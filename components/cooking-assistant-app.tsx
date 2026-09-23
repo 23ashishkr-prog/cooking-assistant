@@ -39,6 +39,7 @@ import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
 import { MoakaStudio } from './moaka-studio'
+import { MoakaPlacementPanel } from './moaka-placement-panel'
 import { RecipeLibrary } from './recipe-library'
 import { CookingMode as LibraryCookingMode } from './library-cooking-mode'
 import { CommunityFeed } from './community-feed'
@@ -104,7 +105,7 @@ export type MealPlanItem = {
   }[]
 }
 
-export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'favorites' | 'profile' | 'community' | 'studio' | 'library'
+export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'favorites' | 'profile' | 'community' | 'studio' | 'placement' | 'library'
 
 const QUICK_SEARCHES = [
   'Authentic Tonkotsu Ramen',
@@ -857,6 +858,7 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
       {/* Main Content by Active Tab */}
       <main className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
         {activeTab === 'studio' && <div className="moaka-tab space-y-4"><button type="button" className="rounded-full border border-[#ded9cf] bg-white px-4 py-2 text-xs font-bold" onClick={() => setActiveTab('library')}>Explore Recipe Library →</button><MoakaStudio userId={userId} /></div>}
+        {activeTab === 'placement' && <div className="moaka-tab"><MoakaPlacementPanel recipes={recipes} /></div>}
         {activeTab === 'library' && <div className="moaka-tab space-y-4"><button type="button" className="rounded-full bg-[#f4510b] px-4 py-2 text-xs font-bold text-white" onClick={() => setActiveTab('studio')}>← MOAKA Studio</button><RecipeLibrary onCook={setLibraryCookingRecipe} /></div>}
         {libraryCookingRecipe && <LibraryCookingMode recipe={libraryCookingRecipe} onClose={() => setLibraryCookingRecipe(null)} onCompleted={() => setLibraryCookingRecipe(null)} />}
         {activeTab === 'community' && (
@@ -1945,6 +1947,7 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
             { id: 'plan', label: 'Plan', icon: Calendar },
             { id: 'kitchen', label: 'Kitchen', icon: ShoppingBag },
             { id: 'favorites', label: 'Favorites', icon: Heart },
+            { id: 'placement', label: 'Place', icon: Layers },
             { id: 'profile', label: 'Profile', icon: User },
           ].map(({ id, label, icon: TabIcon }) => {
             const isActive = activeTab === id
