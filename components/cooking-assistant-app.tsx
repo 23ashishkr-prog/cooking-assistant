@@ -39,6 +39,7 @@ import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
 import { MoakaStudio } from './moaka-studio'
+import { MoakaPlacementPanel } from './moaka-placement-panel'
 import { RecipeLibrary } from './recipe-library'
 import { CookingMode as LibraryCookingMode } from './library-cooking-mode'
 import { CommunityFeed } from './community-feed'
@@ -104,7 +105,7 @@ export type MealPlanItem = {
   }[]
 }
 
-export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'favorites' | 'profile' | 'community' | 'studio' | 'library'
+export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'favorites' | 'profile' | 'community' | 'studio' | 'placement' | 'library'
 
 const QUICK_SEARCHES = [
   'Authentic Tonkotsu Ramen',
