@@ -269,26 +269,18 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
   const handleLogout = async () => {
     const supabase = createBrowserSupabaseClient()
     await supabase.auth.signOut()
-    window.localStorage.removeItem('moaka-week-plan')
     window.location.assign('/login')
   }
 
-  // Fetch meal plans
+  // Meal plans are persisted in Supabase; an empty response is a real empty state.
   const loadMealPlans = async () => {
     setLoadingPlans(true)
     try {
       const res = await fetch(`/api/meal-plans?userId=${encodeURIComponent(userId)}`)
       const data = await res.json()
-      if (res.ok && data.plans?.length) {
-        setMealPlans(data.plans)
-      } else {
-        const saved = window.localStorage.getItem('moaka-week-plan')
-        if (saved) setMealPlans(JSON.parse(saved))
-      }
+      if (res.ok && Array.isArray(data.plans)) setMealPlans(data.plans)
     } catch (err) {
       console.warn('Load plans error:', err)
-      const saved = window.localStorage.getItem('moaka-week-plan')
-      if (saved) setMealPlans(JSON.parse(saved))
     } finally {
       setLoadingPlans(false)
     }

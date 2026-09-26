@@ -60,47 +60,12 @@ export type CookingModeProps = {
 export function CookingMode({ recipe, mealPlanId, onClose, onCompleted }: CookingModeProps) {
   const recipeName = recipe.name || recipe.title || 'Selected Recipe'
   
-  // Prepare steps
-  const steps: CookingStep[] = (recipe.stepsList && recipe.stepsList.length > 0)
-    ? recipe.stepsList
-    : [
-        {
-          step_number: 1,
-          title: 'Prepare Mise en Place',
-          instruction: 'Gather all ingredients, clean cutting board, and measure out seasonings.',
-          duration_seconds: 180,
-          temperature: 'Room Temp',
-          visual_check: 'All vegetables chopped uniformly, pans clean and ready.',
-          tip: 'Having everything prepped prevents burning aromatics later.',
-        },
-        {
-          step_number: 2,
-          title: 'Heat Cookware & Aromatics',
-          instruction: 'Place pan over medium heat with oil or butter. Sauté aromatics until fragrant and translucent.',
-          duration_seconds: 240,
-          temperature: 'Medium',
-          visual_check: 'Gentle sizzle with golden edges; onions translucent and sweet smelling.',
-          tip: 'Do not let garlic brown too quickly or it turns bitter.',
-        },
-        {
-          step_number: 3,
-          title: 'Simmer Main Dish',
-          instruction: 'Add the main ingredients and sauce/broth. Bring to a gentle simmer so flavors meld together completely.',
-          duration_seconds: 480,
-          temperature: 'Medium-Low',
-          visual_check: 'Even gentle bubbles across the surface and rich appetizing aroma.',
-          tip: 'Stir occasionally along bottom to ensure heat transfers evenly.',
-        },
-        {
-          step_number: 4,
-          title: 'Final Seasoning & Rest',
-          instruction: 'Taste and adjust salt, pepper, or lemon juice. Turn off flame and let rest for 2 minutes before serving.',
-          duration_seconds: 120,
-          temperature: 'Off Heat',
-          visual_check: 'Glossy sauce, vibrant colors, ready to plate piping hot.',
-          tip: 'A splash of fresh herbs right at the end brightens up the dish.',
-        },
-      ]
+  // Library cooking is also driven by persisted recipe steps.
+  const steps: CookingStep[] = Array.isArray(recipe.stepsList) ? recipe.stepsList : []
+
+  if (steps.length === 0) {
+    return null
+  }
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const currentStep = steps[currentStepIndex] || steps[0]

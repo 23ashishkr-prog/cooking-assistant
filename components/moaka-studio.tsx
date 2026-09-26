@@ -1,19 +1,19 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { LOCAL_BUNDLE } from '@/lib/moaka/local'
 import { normalizeBundle, recipeSkill, type Bundle } from '@/lib/moaka/schema'
 import { canStart, criticalPath, estimatedElapsed, execution, transition, restoreSession, type Choices, type Instance } from '@/lib/moaka/engine'
 const panel='rounded-2xl border border-[#ded9cf] bg-white p-5'
 const button='rounded-xl bg-[#24131a] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40'
 const amount=(n:number)=>Number(n.toFixed(2)).toString()
 export function MoakaStudio({userId,initialBundle}:{userId:string;initialBundle?:Bundle}) {
- const [bundle,setBundle]=useState(initialBundle||LOCAL_BUNDLE),[view,setView]=useState<'discover'|'review'|'cook'>('discover')
- const [query,setQuery]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState('Local authored example · MOAKA v1.3')
+ const [bundle,setBundle]=useState<Bundle|null>(initialBundle||null),[view,setView]=useState<'discover'|'review'|'cook'>('discover')
+ const [query,setQuery]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState('Describe a dish to load a validated recipe bundle.')
  const [servings,setServings]=useState(4),[choices,setChoices]=useState<Choices>({ing_tikka:'rcp_tikka_baked'}),[checks,setChecks]=useState<Record<string,boolean>>({})
  const [budget,setBudget]=useState(45),[scheduled,setScheduled]=useState(''),[instance,setInstance]=useState<Instance|null>(null),[loaded,setLoaded]=useState(false)
  const storageKey='moaka-studio-v13:'+userId
  useEffect(()=>{try{const raw=localStorage.getItem(storageKey);if(raw&&!initialBundle){const saved=JSON.parse(raw);const validated=normalizeBundle(saved.bundle);const restored=restoreSession(saved,validated);setBundle(validated);setChoices(restored.choices);setServings(restored.servings);setInstance(restored.instance);setView('cook')}}catch{setNotice('Saved session could not be restored. Start a new review.')}setLoaded(true)},[storageKey,initialBundle])
  useEffect(()=>{if(loaded&&instance){try{localStorage.setItem(storageKey,JSON.stringify({bundle,choices,servings,instance}))}catch{setNotice('Browser storage unavailable. Keep this tab open to retain progress.')}}},[bundle,choices,servings,instance,loaded,storageKey])
+ if(!bundle) return <div className="space-y-5 pb-8"><div className="rounded-3xl bg-[#24131a] p-6 text-white"><p className="text-xs uppercase tracking-[0.2em] text-[#ff8a57]">MOAKA Studio / 1.3</p><h1 className="mt-2 font-serif text-3xl">A little planning. A calmer kitchen.</h1><p className="mt-2 text-sm text-white/70">Choose your components, gather what you need, and cook one ready action at a time.</p></div><p className="text-sm text-[#736e65]" role="status">{notice}</p><form className={panel+' flex gap-2'} onSubmit={e=>{e.preventDefault();suggest()}}><input aria-label="Dish or food preference" className="min-w-0 flex-1 rounded-lg border p-2" maxLength={500} value={query} onChange={e=>setQuery(e.target.value)} placeholder="What would you like to cook?"/><button className={button} disabled={busy||!query.trim()}>{busy?'Thinking…':'Suggest recipe'}</button></form></div>
  const recipe=bundle.recipes.find(r=>r.recipe_id===bundle.root_recipe_id)!
  const plan=useMemo(()=>execution(bundle,choices,servings),[bundle,choices,servings])
  const critical=criticalPath(plan.steps),elapsed=estimatedElapsed(plan.steps),eligible=elapsed<=budget
