@@ -2,9 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Cooking Assistant — Cook something worth remembering',
-  description: 'A thoughtful cooking companion and meal planner with curated recipes and step-by-step guides.',
-  generator: 'v0.app',
+  title: 'Mise — Your smart cooking era',
+  description: 'Smart meal ideas, pantry-aware picks, and guided cooking without the decision fatigue.',
   icons: {
     icon: [
       {
