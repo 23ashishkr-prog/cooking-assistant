@@ -83,6 +83,9 @@ export const DEFAULT_RECIPES: RecipeItem[] = [
 ]
 
 export function withDefaultRecipes(recipes: RecipeItem[]): RecipeItem[] {
-  const byMealType = new Map(recipes.map((recipe) => [recipe.meal_type, recipe]))
-  return DEFAULT_RECIPES.map((fallback) => byMealType.get(fallback.meal_type) || fallback)
+  const existingMealTypes = new Set(recipes.map((recipe) => recipe.meal_type))
+  const missingSlotRecipes = DEFAULT_RECIPES.filter((recipe) => !existingMealTypes.has(recipe.meal_type))
+
+  // Keep every database/search result. Defaults only fill missing meal slots.
+  return [...recipes, ...missingSlotRecipes]
 }
