@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateAndStoreRecipeImage } from '@/lib/recipe-image-generation'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { imageRepairTargets, isRecipeImage } from '@/lib/recipe-image-policy'
 
 export const maxDuration = 60
+
+async function canRepairRecipeImages(req: NextRequest) {
+  const secret = process.env.RECIPE_IMAGE_REPAIR_SECRET
+  if (secret && req.headers.get('authorization') === `Bearer ${secret}`) return true
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const permittedEmail = (process.env.RECIPE_IMAGE_ADMIN_EMAIL || 'ashish@moaka.app').toLowerCase()
+  return Boolean(user?.email && user.email.toLowerCase() === permittedEmail)
+}
 
 export async function GET(req: NextRequest) {
   const recipeId = req.nextUrl.searchParams.get('recipeId')
@@ -24,15 +34,15 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ error: 'Recipe image is not available' }, { status: 404 })
   } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Could not generate recipe image' }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Could not load recipe image' }, { status: 500 })
   }
 }
 
 export async function POST(req: NextRequest) {
-  const secret = process.env.RECIPE_IMAGE_REPAIR_SECRET
-  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!(await canRepairRecipeImages(req))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
   try {
     const { recipeId, force = false, repairNext = false } = await req.json()
     if (repairNext) {
@@ -44,6 +54,7 @@ export async function POST(req: NextRequest) {
       const imageUrl = await generateAndStoreRecipeImage(String(target.id), true)
       return NextResponse.json({ complete: false, repairedRecipeId: target.id, imageUrl })
     }
+
     if (!recipeId) return NextResponse.json({ error: 'recipeId is required' }, { status: 400 })
     const imageUrl = await generateAndStoreRecipeImage(String(recipeId), Boolean(force))
     return NextResponse.json({ imageUrl })
