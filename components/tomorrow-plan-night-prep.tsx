@@ -336,7 +336,7 @@ export function TomorrowPlanNightPrep({
   }, [reminderTime])
 
   // Reminder Alert Settings & State
-  const [reminderEnabled, setReminderEnabled] = useState(true)
+  const [reminderEnabled, setReminderEnabled] = useState(false)
   const [reminderNotificationFired, setReminderNotificationFired] = useState(false)
   const [showReminderModal, setShowReminderModal] = useState(false)
   const [reminderTriggerNotice, setReminderTriggerNotice] = useState<string | null>(null)
