@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Calendar,
   Check,
@@ -56,6 +56,14 @@ export function SmartCookModal({
   // Submission & Timeline state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [planResult, setPlanResult] = useState<any>(null)
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   const handleCreatePlan = async () => {
     setIsSubmitting(true)
@@ -122,6 +130,7 @@ export function SmartCookModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close smart cooking plan"
             className="rounded-full p-2 text-[#736e65] hover:bg-[#f0ece3] transition"
           >
             <X className="size-5" />
