@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Calendar,
   Check,
@@ -56,17 +56,11 @@ export function SmartCookModal({
   // Submission & Timeline state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [planResult, setPlanResult] = useState<any>(null)
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleCreatePlan = async () => {
     setIsSubmitting(true)
+    setSubmitError(null)
     try {
       let targetDateStr = new Date().toISOString().split('T')[0]
       if (dateOption === 'tomorrow') {
@@ -94,10 +88,11 @@ export function SmartCookModal({
         setPlanResult(data)
         if (onPlanCreated) onPlanCreated(data.plan)
       } else {
-        alert(data.error || 'Failed to create plan')
+        setSubmitError(data.error || 'Could not create the plan. Please try again.')
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Create plan error:', err)
+      setSubmitError(err?.message || 'Could not connect to the planner.')
     } finally {
       setIsSubmitting(false)
     }
@@ -130,7 +125,6 @@ export function SmartCookModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close smart cooking plan"
             className="rounded-full p-2 text-[#736e65] hover:bg-[#f0ece3] transition"
           >
             <X className="size-5" />
@@ -229,6 +223,14 @@ export function SmartCookModal({
 
             {/* 4. Single Prominent Action: [ CREATE PLAN ] */}
             <div className="pt-2">
+              {submitError && (
+                <div className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-[#fecaca] bg-[#fff1f2] p-3 text-xs text-[#9f1239]" role="alert">
+                  <span>{submitError}</span>
+                  <button type="button" onClick={() => setSubmitError(null)} className="shrink-0" aria-label="Dismiss error">
+                    <X className="size-4" />
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={handleCreatePlan}
