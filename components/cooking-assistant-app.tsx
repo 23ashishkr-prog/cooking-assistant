@@ -35,7 +35,6 @@ import { CookingMode, type CookingStep } from './cooking-mode'
 import { SmartCookModal } from './smart-cook-modal'
 import { TomorrowPlanNightPrep } from './tomorrow-plan-night-prep'
 import { MoakaPlacementPanel } from './moaka-placement-panel'
-import { withDefaultRecipes } from '@/lib/default-recipes'
 
 export type RecipeItem = {
   id: string
@@ -101,27 +100,25 @@ export function CookingAssistantApp({ initialRecipes = [] }: { initialRecipes: a
 
   // Recipes State
   const [recipes, setRecipes] = useState<RecipeItem[]>(() =>
-    withDefaultRecipes(
-      initialRecipes.map((r) => ({
-        id: r.id,
-        name: r.name || r.title || 'Curated Dish',
-        title: r.name || r.title || 'Curated Dish',
-        description: r.description,
-        image_url: r.image_url,
-        meal_type: (r.meal_type || r.category || 'dinner').toLowerCase(),
-        category: r.category || 'Dinner',
-        cuisine: r.cuisine || 'Global',
-        diet_type: r.diet_type || 'Vegetarian',
-        difficulty: r.difficulty || 'Easy',
-        prep_time: r.prep_time_minutes || r.prep_time || 15,
-        cook_time: r.cook_time_minutes || r.cook_time || 20,
-        total_time: r.total_time_minutes || (r.prep_time_minutes || 15) + (r.cook_time_minutes || 20),
-        servings: r.default_servings || r.servings || 4,
-        tips: r.tips,
-        ingredients: r.ingredients || [],
-        instructions: r.instructions || [],
-      }))
-    )
+    initialRecipes.map((r) => ({
+      id: r.id,
+      name: r.name || r.title || 'Curated Dish',
+      title: r.name || r.title || 'Curated Dish',
+      description: r.description,
+      image_url: r.image_url,
+      meal_type: (r.meal_type || r.category || 'dinner').toLowerCase(),
+      category: r.category || 'Dinner',
+      cuisine: r.cuisine || 'Global',
+      diet_type: r.diet_type || 'Vegetarian',
+      difficulty: r.difficulty || 'Easy',
+      prep_time: r.prep_time_minutes || r.prep_time || 15,
+      cook_time: r.cook_time_minutes || r.cook_time || 20,
+      total_time: r.total_time_minutes || (r.prep_time_minutes || 15) + (r.cook_time_minutes || 20),
+      servings: r.default_servings || r.servings || 4,
+      tips: r.tips,
+      ingredients: r.ingredients || [],
+      instructions: r.instructions || [],
+    }))
   )
 
   // Current Context Greeting
