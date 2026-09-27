@@ -106,7 +106,7 @@ export type MealPlanItem = {
   }[]
 }
 
-export type ActiveTab = 'home' | 'plan' | 'kitchen' | 'favorites' | 'profile' | 'community' | 'studio' | 'placement' | 'library'
+export type ActiveTab = 'home' | 'dadi' | 'plan' | 'kitchen' | 'favorites' | 'profile' | 'community' | 'studio' | 'placement' | 'library'
 
 const QUICK_SEARCHES = [
   'Authentic Tonkotsu Ramen',
@@ -1033,10 +1033,10 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
                 })}
               </div>
             </div>
-            <DadiMealCheckin />
-
           </div>
         )}
+
+        {activeTab === 'dadi' && <DadiMealCheckin />}
 
         {/* ===================== TAB 2: 📅 PLAN ===================== */}
         {activeTab === 'plan' && (
@@ -1938,6 +1938,7 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
         <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
           {[
             { id: 'home', label: 'Discover', icon: ChefHat },
+            { id: 'dadi', label: 'Dadi', icon: Sparkles },
             { id: 'plan', label: 'Plan', icon: Calendar },
             { id: 'kitchen', label: 'Kitchen', icon: ShoppingBag },
             { id: 'favorites', label: 'Favorites', icon: Heart },
