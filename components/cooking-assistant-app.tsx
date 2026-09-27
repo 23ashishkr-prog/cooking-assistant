@@ -45,6 +45,7 @@ import { CookingMode as LibraryCookingMode } from './library-cooking-mode'
 import { CommunityFeed } from './community-feed'
 import { RecipeImage } from './recipe-image'
 import { DadiMealCheckin } from './dadi-meal-checkin'
+import { DADI_AVATAR_SRC } from '@/lib/dadi-avatar'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { cuisineFallbackImage, recipeContainsExcludedMeat, recipeMatchesDietPreference } from '@/lib/recipe-personalization'
 
@@ -1955,7 +1956,10 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
                   isActive ? 'text-[#b25537] font-bold' : 'text-[#736e65] hover:text-[#223129]'
                 }`}
               >
-                {id === 'kitchen' ? (
+                {id === 'dadi' ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={DADI_AVATAR_SRC} alt="" className={`size-6 rounded-full bg-[#fff3e9] object-cover object-top ${isActive ? 'ring-2 ring-[#f4510b]' : ''}`} />
+                ) : id === 'kitchen' ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src="/moaka-icon.jpg" alt="" className={`moaka-nav-logo ${isActive ? 'is-active' : ''}`} />
                 ) : (
