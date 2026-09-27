@@ -12,6 +12,7 @@ type RepairJob = {
 }
 
 const MAX_CONCURRENT_REPAIRS = 2
+const MAX_REPAIR_ATTEMPTS = 3
 const repairQueue: RepairJob[] = []
 const repairsInFlight = new Map<string, Promise<string>>()
 let activeRepairs = 0
@@ -56,8 +57,8 @@ function queueRecipeImageRepair(recipeId: string, force: boolean) {
   return task
 }
 
-// A missing or duplicate image is repaired once in the background and persisted to
-// Supabase Storage. Cards never use a visual fallback for a different recipe.
+// Missing or duplicate images are generated from the recipe name and details, then
+// persisted in Supabase Storage. A card never substitutes another recipe's picture.
 export function RecipeImage({
   recipe,
   regenerate = false,
@@ -73,43 +74,74 @@ export function RecipeImage({
   const recipeId = String(recipe?.id || '')
   const name = recipe?.name || recipe?.title || 'Recipe'
   const [imageUrl, setImageUrl] = useState(() => (isRecipeImage(storedUrl) && !regenerate ? storedUrl : ''))
-  const [repairFailed, setRepairFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const [repairError, setRepairError] = useState('')
 
   useEffect(() => {
     if (isRecipeImage(storedUrl) && !regenerate) {
       setImageUrl(storedUrl)
+      setRepairError('')
       return
     }
-    if (!recipeId || repairFailed) return
+    if (!recipeId) return
 
     let mounted = true
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
     queueRecipeImageRepair(recipeId, regenerate && isRecipeImage(storedUrl))
       .then((url) => {
-        if (mounted) setImageUrl(url)
+        if (!mounted) return
+        setImageUrl(url)
+        setRepairError('')
       })
-      .catch(() => {
-        if (mounted) setRepairFailed(true)
+      .catch((error: Error) => {
+        if (!mounted) return
+        if (attempt + 1 < MAX_REPAIR_ATTEMPTS) {
+          retryTimer = setTimeout(() => setAttempt((current) => current + 1), 1200 * (attempt + 1))
+          return
+        }
+        setRepairError(error.message || 'Recipe photo could not be prepared yet.')
       })
+
     return () => {
       mounted = false
+      if (retryTimer) clearTimeout(retryTimer)
     }
-  }, [recipeId, storedUrl, regenerate, repairFailed])
+  }, [recipeId, storedUrl, regenerate, attempt])
+
+  const retryRepair = () => {
+    if (!recipeId) return
+    setImageUrl('')
+    setRepairError('')
+    setAttempt(0)
+    // Change the input to the effect even if the previous retry counter was already zero.
+    setAttempt((current) => current + 1)
+  }
 
   const repairBrokenImage = () => {
-    if (!recipeId || repairFailed) return
+    if (!recipeId) return
     setImageUrl('')
-    queueRecipeImageRepair(recipeId, true)
-      .then(setImageUrl)
-      .catch(() => setRepairFailed(true))
+    setRepairError('')
+    setAttempt((current) => current + 1)
   }
 
   if (!imageUrl) {
     return (
       <div
-        className={`block ${className} animate-pulse bg-[#e8e4db]`}
+        className={`relative block ${className} ${repairError ? 'bg-[#e8e4db]' : 'animate-pulse bg-[#e8e4db]'}`}
         role="status"
-        aria-label={repairFailed ? `Image generation failed for ${name}` : `Generating image for ${name}`}
-      />
+        aria-label={repairError ? `Image generation failed for ${name}` : `Preparing an image for ${name}`}
+      >
+        {repairError && (
+          <button
+            type="button"
+            onClick={retryRepair}
+            className="absolute inset-0 grid place-items-center px-3 text-center text-xs font-semibold text-[#5c554a]"
+            aria-label={`Retry image generation for ${name}`}
+          >
+            Prepare recipe photo
+          </button>
+        )}
+      </div>
     )
   }
 
