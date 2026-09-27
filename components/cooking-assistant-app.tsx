@@ -44,6 +44,7 @@ import { RecipeLibrary } from './recipe-library'
 import { CookingMode as LibraryCookingMode } from './library-cooking-mode'
 import { CommunityFeed } from './community-feed'
 import { RecipeImage } from './recipe-image'
+import { DadiMealCheckin } from './dadi-meal-checkin'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { cuisineFallbackImage, recipeContainsExcludedMeat, recipeMatchesDietPreference } from '@/lib/recipe-personalization'
 
@@ -1032,6 +1033,7 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
                 })}
               </div>
             </div>
+            <DadiMealCheckin />
 
           </div>
         )}
