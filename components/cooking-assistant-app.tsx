@@ -44,6 +44,7 @@ import { RecipeLibrary } from './recipe-library'
 import { CookingMode as LibraryCookingMode } from './library-cooking-mode'
 import { CommunityFeed } from './community-feed'
 import { RecipeImage } from './recipe-image'
+import { RecipeImageBackfill } from './recipe-image-backfill'
 import { DadiMealCheckin } from './dadi-meal-checkin'
 import { DADI_AVATAR_SRC } from '@/lib/dadi-avatar'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
@@ -815,6 +816,12 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
   }
 
   return (
+    <>
+      <RecipeImageBackfill
+        onImageReady={(recipeId, imageUrl) => {
+          setRecipes((current) => current.map((recipe) => recipe.id === recipeId ? { ...recipe, image_url: imageUrl } : recipe))
+        }}
+      />
     <div className="mise-app min-h-screen bg-[#fbf9f5] text-[#223129] pb-24 font-sans">
       {/* Moaka brand bar */}
       <header className="mise-header sticky top-0 z-30 border-b border-[#ded9cf] bg-[#fbf9f5]/90 backdrop-blur-md">
@@ -1999,5 +2006,6 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
         />
       )}
     </div>
+    </>
   )
 }
