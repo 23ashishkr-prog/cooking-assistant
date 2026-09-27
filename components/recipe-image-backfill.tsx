@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 type Props = {
   onImageReady: (recipeId: string, imageUrl: string) => void
@@ -10,9 +10,18 @@ type Props = {
 // once, persists each image to Supabase Storage, and keeps running while the app is
 // open—even when the user changes tabs.
 export function RecipeImageBackfill({ onImageReady }: Props) {
+  const onImageReadyRef = useRef(onImageReady)
+  useEffect(() => {
+    onImageReadyRef.current = onImageReady
+  }, [onImageReady])
+
   useEffect(() => {
     let cancelled = false
     let idleId: number | undefined
+    const idleWindow = window as Window & typeof globalThis & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
 
     const pause = (milliseconds: number) => new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds))
 
@@ -32,7 +41,7 @@ export function RecipeImageBackfill({ onImageReady }: Props) {
           }
           if (payload.complete) return
           if (payload.repairedRecipeId && payload.imageUrl) {
-            onImageReady(String(payload.repairedRecipeId), String(payload.imageUrl))
+            onImageReadyRef.current(String(payload.repairedRecipeId), String(payload.imageUrl))
           }
 
           // Keep requests gentle: one generated image is committed before the next.
@@ -45,21 +54,21 @@ export function RecipeImageBackfill({ onImageReady }: Props) {
     }
 
     const start = () => { void repairCatalogue() }
-    if ('requestIdleCallback' in window) {
-      idleId = window.requestIdleCallback(start, { timeout: 1200 })
+    if (idleWindow.requestIdleCallback) {
+      idleId = idleWindow.requestIdleCallback(start, { timeout: 1200 })
     } else {
       idleId = window.setTimeout(start, 300)
     }
 
     return () => {
       cancelled = true
-      if ('cancelIdleCallback' in window && idleId !== undefined) {
-        window.cancelIdleCallback(idleId)
+      if (idleWindow.cancelIdleCallback && idleId !== undefined) {
+        idleWindow.cancelIdleCallback(idleId)
       } else if (idleId !== undefined) {
         window.clearTimeout(idleId)
       }
     }
-  }, [onImageReady])
+  }, [])
 
   return null
 }
