@@ -4,7 +4,8 @@ import { ChangeEvent, FormEvent, useRef, useState } from 'react'
 import { Camera, LoaderCircle, Send } from 'lucide-react'
 import { DADI_AVATAR_SRC } from '@/lib/dadi-avatar'
 
-type Message = { role: 'dadi' | 'user'; text: string }
+type Recipe = { id: string; name?: string; title?: string; description?: string; ingredients?: any[]; instructions?: string[]; prep_time_minutes?: number; total_time_minutes?: number }
+type Message = { role: 'dadi' | 'user'; text: string; recipe?: Recipe | null }
 
 export function DadiMealCheckin() {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -34,7 +35,7 @@ export function DadiMealCheckin() {
       const response = await fetch('/api/dadi/meal-checkin', { method: 'POST', body })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Dadi could not answer right now.')
-      setMessages(current => [...current, { role: 'dadi', text: data.reply }])
+      setMessages(current => [...current, { role: 'dadi', text: data.reply, recipe: data.recipe || null }])
       setPhoto(null)
       if (inputRef.current) inputRef.current.value = ''
     } catch (e: any) {
@@ -52,7 +53,10 @@ export function DadiMealCheckin() {
       <div className="space-y-4" aria-live="polite">
         {messages.map((message, index) => <div key={index} className={message.role === 'dadi' ? 'flex items-end gap-2' : 'flex justify-end'}>
           {message.role === 'dadi' && <img src={DADI_AVATAR_SRC} alt="Dadi" className="size-9 shrink-0 rounded-full bg-[#fff3e9] object-cover object-top" />}
-          <p className={message.role === 'dadi' ? 'max-w-[82%] rounded-2xl rounded-bl-sm bg-[#f5f1eb] px-4 py-3 text-sm leading-6 text-[#34312d]' : 'max-w-[82%] rounded-2xl rounded-br-sm bg-[#f4510b] px-4 py-3 text-sm leading-6 text-white'}>{message.text}</p>
+          <div className={message.role === 'dadi' ? 'max-w-[82%]' : 'max-w-[82%]'}>
+            <p className={message.role === 'dadi' ? 'rounded-2xl rounded-bl-sm bg-[#f5f1eb] px-4 py-3 text-sm leading-6 text-[#34312d]' : 'rounded-2xl rounded-br-sm bg-[#f4510b] px-4 py-3 text-sm leading-6 text-white'}>{message.text}</p>
+            {message.role === 'dadi' && message.recipe && <details className="mt-2 rounded-xl border border-[#edc6a9] bg-[#fff8ee] p-3 text-xs text-[#5e493d]"><summary className="cursor-pointer font-bold text-[#b25537]">How to make {message.recipe.name || message.recipe.title}</summary><p className="mt-2">{message.recipe.description}</p><p className="mt-2 font-bold">You will need</p><p>{(message.recipe.ingredients || []).map((item: any) => `${item.measure || ''} ${item.name || item}`.trim()).join(' · ')}</p><p className="mt-2 font-bold">Dadi&apos;s method</p><ol className="list-decimal space-y-1 pl-4">{(message.recipe.instructions || []).filter((step: string) => !/^step\\s*\\d+$/i.test(step)).map((step: string, stepIndex: number) => <li key={stepIndex}>{step}</li>)}</ol></details>}
+          </div>
         </div>)}
         {loading && <div className="flex items-center gap-2 text-sm text-[#736e65]"><img src={DADI_AVATAR_SRC} alt="" className="size-8 rounded-full bg-[#fff3e9] object-cover object-top" /><LoaderCircle className="size-4 animate-spin" /> Dadi is thinking…</div>}
       </div>
