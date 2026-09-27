@@ -56,6 +56,19 @@ export async function POST(req: NextRequest) {
         const { data } = await admin.from('recipes').select('id, name, title, description, ingredients, instructions, prep_time_minutes, total_time_minutes').ilike('name', `%${candidate}%`).limit(1)
         if (data?.[0]) { suggestedRecipe = data[0]; break }
       }
+      if (!suggestedRecipe && /nimbu pani|lemon water|lemonade/i.test(suggestedQuery)) {
+        const nimbuRecipe = {
+          id: 'moaka-fresh-nimbu-pani', source_name: 'Moaka', name: 'Fresh Nimbu Pani', title: 'Fresh Nimbu Pani',
+          description: 'A light Indian lemon drink with mint, black salt and no added sugar.', meal_type: 'high_tea',
+          category: 'Beverage', cuisine: 'Indian', diet_type: 'Vegan', prep_time_minutes: 5, cook_time_minutes: 0,
+          total_time_minutes: 5, default_servings: 1, calories: 12, nutrition_score: 9.2,
+          ingredients: [{ name: 'Fresh lemon', measure: '1 medium' }, { name: 'Chilled water', measure: '300 ml' }, { name: 'Black salt', measure: 'a pinch' }, { name: 'Roasted cumin powder', measure: 'a pinch' }, { name: 'Fresh mint', measure: '4 leaves' }],
+          instructions: ['Squeeze the fresh lemon into a glass.', 'Add chilled water, black salt and roasted cumin powder.', 'Stir well, add mint and ice if desired, then serve immediately.'],
+          tags: ['drink', 'indian', 'lemon', 'low-calorie', 'dadi'], published: true, data_source: 'Moaka',
+        }
+        const { data } = await admin.from('recipes').upsert(nimbuRecipe, { onConflict: 'id' }).select('id, name, title, description, ingredients, instructions, prep_time_minutes, total_time_minutes').single()
+        suggestedRecipe = data
+      }
     }
     const calories = Math.max(0, Math.round(Number(analysis.calories) || 0))
     const protein = Math.max(0, Number(analysis.protein_g) || 0)
