@@ -9,10 +9,11 @@ async function canRepairRecipeImages(req: NextRequest) {
   const secret = process.env.RECIPE_IMAGE_REPAIR_SECRET
   if (secret && req.headers.get('authorization') === `Bearer ${secret}`) return true
 
+  // Recipe photos are shared catalogue data. Any authenticated app user may request
+  // an absent photo; the result is generated once and persisted for everyone.
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const permittedEmail = (process.env.RECIPE_IMAGE_ADMIN_EMAIL || 'ashish@moaka.app').toLowerCase()
-  return Boolean(user?.email && user.email.toLowerCase() === permittedEmail)
+  return Boolean(user)
 }
 
 export async function GET(req: NextRequest) {
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (!(await canRepairRecipeImages(req))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Please sign in to prepare recipe images.' }, { status: 401 })
   }
 
   try {
