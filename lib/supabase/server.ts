@@ -27,8 +27,15 @@ export type Recipe = {
 
 function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) throw new Error('Supabase is not configured')
+  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('Supabase admin client is not configured')
+  return { url, key }
+}
+
+function getPublicSupabaseConfig() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) throw new Error('Supabase public client is not configured')
   return { url, key }
 }
 
@@ -38,18 +45,13 @@ export function createAdminClient() {
 }
 
 export async function createClient() {
-  const { url, key } = getSupabaseConfig()
+  const { url, key } = getPublicSupabaseConfig()
   const cookieStore = await cookies()
-
   return createServerClient(url, key, {
     cookies: {
-      getAll() {
-        return cookieStore.getAll()
-      },
+      getAll() { return cookieStore.getAll() },
       setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
-        } catch {
+        try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {
           // Server Components cannot always write cookies; proxy handles refresh.
         }
       },
