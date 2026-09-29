@@ -1,5 +1,7 @@
 'use client'
 
+import { PlanControlCentre } from '@/components/plan-control-centre'
+
 import { KitchenOperationsPanel } from '@/components/kitchen-operations-panel'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
@@ -1051,6 +1053,13 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
         {/* ===================== TAB 2: 📅 PLAN ===================== */}
         {activeTab === 'plan' && (
           <div className="moaka-tab space-y-6">
+            <PlanControlCentre
+              mealPlans={mealPlans}
+              recipes={recipes}
+              isGenerating={isGeneratingWeek}
+              onGenerate={handleGenerateWeek}
+              onCook={(recipe, planId) => handleStartCooking(recipe, planId)}
+            />
             {/* Header with Generate My Week */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-[#ded9cf] bg-white p-5 sm:p-7 shadow-xs">
               <div>
@@ -1128,7 +1137,10 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
               }}
             />
 
-            {/* List of Scheduled Meals & Preparation Tasks */}
+            <details className="rounded-2xl border border-[#ded9cf] bg-white shadow-xs">
+              <summary className="cursor-pointer list-none px-5 py-4 text-xs font-bold text-[#536158]">Open full preparation checklist</summary>
+              <div className="border-t border-[#f0ece3] p-4">
+
             {mealPlans.length === 0 ? (
               <div className="rounded-3xl border border-[#ded9cf] bg-white p-10 text-center space-y-3">
                 <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#faede6] text-[#b25537]">
@@ -1268,6 +1280,9 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
                 })}
               </div>
             )}
+
+              </div>
+            </details>
           </div>
         )}
 
