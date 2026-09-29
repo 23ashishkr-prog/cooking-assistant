@@ -1,5 +1,7 @@
 'use client'
 
+import { KitchenOperationsPanel } from '@/components/kitchen-operations-panel'
+
 import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   ArrowRight,
@@ -1270,6 +1272,8 @@ export function CookingAssistantApp({ initialRecipes = [], userId = 'default_use
         )}
 
         {/* ===================== TAB 3: 🛒 KITCHEN ===================== */}
+        {activeTab === 'kitchen' && (<div className="moaka-tab space-y-6"><KitchenOperationsPanel /></div>)}
+
         {activeTab === 'kitchen' && (
           <div className="moaka-tab space-y-6">
             {/* Header & What Can I Cook trigger */}
